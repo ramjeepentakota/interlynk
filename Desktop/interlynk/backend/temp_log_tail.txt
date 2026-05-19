@@ -1,0 +1,200 @@
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1311) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:911) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:788) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:224) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1372) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1222) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:582) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:542) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:335) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:333) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:208) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:276) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1391) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1311) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:911) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:788) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:224) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1372) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1222) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:582) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:542) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:335) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:333) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:213) ~[spring-beans-5.3.31.jar!/:5.3.31]
+	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.getOrderedBeansOfType(ServletContextInitializerBeans.java:213) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:176) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:171) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAdaptableBeans(ServletContextInitializerBeans.java:156) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.<init>(ServletContextInitializerBeans.java:87) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.getServletContextInitializerBeans(ServletWebServerApplicationContext.java:262) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.selfInitialize(ServletWebServerApplicationContext.java:236) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.embedded.tomcat.TomcatStarter.onStartup(TomcatStarter.java:53) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.apache.catalina.core.StandardContext.startInternal(StandardContext.java:4904) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:171) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1332) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1322) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at java.base/java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:145) ~[na:na]
+	at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:866) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.StandardHost.startInternal(StandardHost.java:794) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:171) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1332) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1322) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[na:na]
+	at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at java.base/java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:145) ~[na:na]
+	at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:866) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.StandardEngine.startInternal(StandardEngine.java:248) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:171) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.StandardService.startInternal(StandardService.java:433) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:171) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.core.StandardServer.startInternal(StandardServer.java:921) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:171) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.apache.catalina.startup.Tomcat.start(Tomcat.java:489) ~[tomcat-embed-core-9.0.83.jar!/:na]
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:123) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:104) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:481) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:211) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:184) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:162) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:585) ~[spring-context-5.3.31.jar!/:5.3.31]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:147) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:732) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:409) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:308) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289) ~[spring-boot-2.7.18.jar!/:2.7.18]
+	at com.enterprise.collab.EnterpriseCollabApplication.main(EnterpriseCollabApplication.java:14) ~[classes!/:1.0.0]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:49) ~[enterprise-collab.jar:1.0.0]
+	at org.springframework.boot.loader.Launcher.launch(Launcher.java:108) ~[enterprise-collab.jar:1.0.0]
+	at org.springframework.boot.loader.Launcher.launch(Launcher.java:58) ~[enterprise-collab.jar:1.0.0]
+	at org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:65) ~[enterprise-collab.jar:1.0.0]
+Caused by: java.sql.SQLSyntaxErrorException: Table 'interlynk.workspaces' doesn't exist
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121) ~[mysql-connector-j-8.0.33.jar!/:8.0.33]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122) ~[mysql-connector-j-8.0.33.jar!/:8.0.33]
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:763) ~[mysql-connector-j-8.0.33.jar!/:8.0.33]
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:648) ~[mysql-connector-j-8.0.33.jar!/:8.0.33]
+	at com.zaxxer.hikari.pool.ProxyStatement.execute(ProxyStatement.java:94) ~[HikariCP-4.0.3.jar!/:na]
+	at com.zaxxer.hikari.pool.HikariProxyStatement.execute(HikariProxyStatement.java) ~[HikariCP-4.0.3.jar!/:na]
+	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:54) ~[hibernate-core-5.6.15.Final.jar!/:5.6.15.Final]
+	... 121 common frames omitted
+
+2026-04-09 15:53:37.415  INFO 2540 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2026-04-09 15:53:37.437  INFO 2540 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-09 15:53:38.099 DEBUG 2540 --- [main] c.e.c.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-04-09 15:53:38.100  INFO 2540 --- [main] c.e.collab.config.RateLimitFilter        : Rate limiting filter initialized (bucket4j disabled for Java 8)
+2026-04-09 15:53:38.793 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.815 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getChannel(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.857 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.857 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.deleteUser(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.858 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.858 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.createUser(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.858 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.858 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateSystemSettings(java.util.List)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.860 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.862 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateVoiceChannelSettings(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.863 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.864 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.removeChannelMember(java.lang.Long,java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.864 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.866 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSystemStats()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateSetting(java.lang.String,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserAccess(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllChannels()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.867 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.addChannelMember(java.lang.Long,java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllUsers()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getVoiceChannels()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.generateLicenseKey(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.870 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserRoles(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllRoles()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserStatus(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.872 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateChannel(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.874 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.874 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSystemSettings()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.874 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.874 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getUserAccess(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.875 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.875 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSetting(java.lang.String)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.875 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.875 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.deleteRole(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:38.876 DEBUG 2540 --- [main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize("hasRole(\'ADMIN\')") found on: com.enterprise.collab.controller.AdminController
+2026-04-09 15:53:38.876 DEBUG 2540 --- [main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.createRole(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-04-09 15:53:39.729 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/**', OPTIONS]
+2026-04-09 15:53:39.731 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/v1/auth/**']
+2026-04-09 15:53:39.731 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/auth/**']
+2026-04-09 15:53:39.731 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/ws/**']
+2026-04-09 15:53:39.732 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui/**']
+2026-04-09 15:53:39.732 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui.html']
+2026-04-09 15:53:39.732 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/v3/api-docs/**']
+2026-04-09 15:53:39.733 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/v3/api-docs.yaml']
+2026-04-09 15:53:39.733 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-resources/**']
+2026-04-09 15:53:39.733 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/actuator/health']
+2026-04-09 15:53:39.733 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/files/**']
+2026-04-09 15:53:39.734 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [hasRole('ROLE_ADMIN')] for Ant [pattern='/api/v1/admin/**']
+2026-04-09 15:53:39.734 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [hasRole('ROLE_ADMIN')] for Ant [pattern='/api/admin/**']
+2026-04-09 15:53:39.734 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', POST]
+2026-04-09 15:53:39.734 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', PUT]
+2026-04-09 15:53:39.734 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', DELETE]
+2026-04-09 15:53:39.735 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', GET]
+2026-04-09 15:53:39.735 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/**']
+2026-04-09 15:53:39.736 DEBUG 2540 --- [main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for any request
+2026-04-09 15:53:39.739  INFO 2540 --- [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@113eed88, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@5f0677f3, org.springframework.security.web.context.SecurityContextPersistenceFilter@e2b3026, org.springframework.security.web.header.HeaderWriterFilter@2fb082ff, org.springframework.web.filter.CorsFilter@9d99851, org.springframework.security.web.authentication.logout.LogoutFilter@46d1b59, com.enterprise.collab.security.JwtAuthenticationFilter@1a1f79ce, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@6ef037e4, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@22fb9a2c, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@4cd7d5e1, org.springframework.security.web.session.SessionManagementFilter@2b682e9, org.springframework.security.web.access.ExceptionTranslationFilter@12e5d3e1, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@5103eea2]
+2026-04-09 15:53:40.782  INFO 2540 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8082 (http) with context path ''
+2026-04-09 15:53:40.785  INFO 2540 --- [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-04-09 15:53:40.786  INFO 2540 --- [main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@5d9bb69b]]
+2026-04-09 15:53:40.788  INFO 2540 --- [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-04-09 15:53:40.800 DEBUG 2540 --- [MessageBroker-1] c.e.c.service.ConnectionHealthService    : Running connection health check...
+2026-04-09 15:53:40.800  INFO 2540 --- [MessageBroker-1] c.e.c.service.ConnectionHealthService    : Health check: 0 users online (Memory)
+2026-04-09 15:53:40.802  INFO 2540 --- [main] c.e.collab.EnterpriseCollabApplication   : Started EnterpriseCollabApplication in 10.829 seconds (JVM running for 11.348)
+2026-04-09 15:53:40.866  WARN 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1146, SQLState: 42S02
+2026-04-09 15:53:40.866 ERROR 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : Table 'interlynk.roles' doesn't exist
+2026-04-09 15:53:40.873  WARN 2540 --- [main] c.e.collab.config.DataInitializer        : Failed to initialize roles: could not extract ResultSet; SQL [n/a]; nested exception is org.hibernate.exception.SQLGrammarException: could not extract ResultSet
+2026-04-09 15:53:40.920 TRACE 2540 --- [main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [demo]
+2026-04-09 15:53:40.922  WARN 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1054, SQLState: 42S22
+2026-04-09 15:53:40.922 ERROR 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : Unknown column 'user0_.status' in 'field list'
+2026-04-09 15:53:40.925  WARN 2540 --- [main] c.e.collab.config.DataInitializer        : Failed to initialize demo user: could not extract ResultSet; SQL [n/a]; nested exception is org.hibernate.exception.SQLGrammarException: could not extract ResultSet
+2026-04-09 15:53:40.928  INFO 2540 --- [main] c.e.collab.config.DataInitializer        : Storage directories created at: ./storage
+2026-04-09 15:53:40.931  WARN 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1146, SQLState: 42S02
+2026-04-09 15:53:40.931 ERROR 2540 --- [main] o.h.engine.jdbc.spi.SqlExceptionHelper   : Table 'interlynk.call_rooms' doesn't exist
+2026-04-09 15:53:40.932  WARN 2540 --- [main] c.e.collab.config.DataInitializer        : Failed to initialize voice channels: could not extract ResultSet; SQL [n/a]; nested exception is org.hibernate.exception.SQLGrammarException: could not extract ResultSet
+2026-04-09 15:53:40.966  INFO 2540 --- [main] c.e.collab.config.DataInitializer        : Data initialization completed
+2026-04-09 15:53:54.154  INFO 2540 --- [http-nio-8082-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-04-09 15:53:54.157  INFO 2540 --- [http-nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-04-09 15:53:54.161  INFO 2540 --- [http-nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-04-09 15:53:54.198 DEBUG 2540 --- [http-nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/auth/login
+2026-04-09 15:53:54.208 DEBUG 2540 --- [http-nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-09 15:53:54.276 DEBUG 2540 --- [http-nio-8082-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-04-09 15:53:54.352 DEBUG 2540 --- [http-nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [POST /api/v1/auth/login] with attributes [permitAll]
+2026-04-09 15:53:54.354 DEBUG 2540 --- [http-nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/auth/login
+2026-04-09 15:53:54.609 TRACE 2540 --- [http-nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-04-09 15:53:54.609  WARN 2540 --- [http-nio-8082-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1054, SQLState: 42S22
+2026-04-09 15:53:54.613 ERROR 2540 --- [http-nio-8082-exec-1] o.h.engine.jdbc.spi.SqlExceptionHelper   : Unknown column 'user0_.status' in 'field list'
+2026-04-09 15:53:54.613 DEBUG 2540 --- [http-nio-8082-exec-1] .s.a.DefaultAuthenticationEventPublisher : No event was found for the exception org.springframework.security.authentication.InternalAuthenticationServiceException
+2026-04-09 15:53:54.645 DEBUG 2540 --- [http-nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-09 15:54:39.864  INFO 2540 --- [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 6, active threads = 1, queued tasks = 3, completed tasks = 2]
+2026-04-09 15:56:16.826 DEBUG 2540 --- [http-nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/v1/auth/login
+2026-04-09 15:56:16.826 DEBUG 2540 --- [http-nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-09 15:56:16.827 DEBUG 2540 --- [http-nio-8082-exec-3] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-04-09 15:56:16.827 DEBUG 2540 --- [http-nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [POST /api/v1/auth/login] with attributes [permitAll]
+2026-04-09 15:56:16.827 DEBUG 2540 --- [http-nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/v1/auth/login
+2026-04-09 15:56:16.829 TRACE 2540 --- [http-nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-04-09 15:56:16.829  WARN 2540 --- [http-nio-8082-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 1054, SQLState: 42S22
+2026-04-09 15:56:16.830 ERROR 2540 --- [http-nio-8082-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper   : Unknown column 'user0_.status' in 'field list'
+2026-04-09 15:56:16.830 DEBUG 2540 --- [http-nio-8082-exec-3] .s.a.DefaultAuthenticationEventPublisher : No event was found for the exception org.springframework.security.authentication.InternalAuthenticationServiceException
+2026-04-09 15:56:16.832 DEBUG 2540 --- [http-nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request

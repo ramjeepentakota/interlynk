@@ -1,0 +1,749 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v2.7.18)
+
+2026-03-21 23:01:20.088  INFO 7192 --- [           main] c.e.collab.EnterpriseCollabApplication   : Starting EnterpriseCollabApplication v1.0.0 using Java 1.8.0_392 on LAPTOP-70FK1TE5 with PID 7192 (C:\Users\ramje\Desktop\interlynk\backend\target\enterprise-collab.jar started by ramje in c:\Users\ramje\Desktop\interlynk\backend)
+2026-03-21 23:01:20.092 DEBUG 7192 --- [           main] c.e.collab.EnterpriseCollabApplication   : Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-03-21 23:01:20.093  INFO 7192 --- [           main] c.e.collab.EnterpriseCollabApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-03-21 23:01:21.121  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-03-21 23:01:21.125  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-21 23:01:21.401  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 265 ms. Found 24 JPA repository interfaces.
+2026-03-21 23:01:21.420  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-03-21 23:01:21.421  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-03-21 23:01:21.438  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.AttachmentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.439  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.AuditLogRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.439  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.CallParticipantRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.440  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.CallRoomRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.441  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.ChannelRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.442  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.CodeExecutionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.442  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.CodeRepositoryRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.443  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.DirectMessageRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.444  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.LicenseKeyRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.445  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.MessageReadReceiptRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.446  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.MessageRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.446  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.NotificationRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.447  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.PullRequestCommentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.448  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.PullRequestRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.448  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.ReactionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.450  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.RefreshTokenRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.450  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.RoleRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.451  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.SystemSettingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.451  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.TeamMemberRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.452  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.TeamRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.453  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.UserBlockRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.454  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.UserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.454  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.WorkspaceFileRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.455  INFO 7192 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.enterprise.collab.repository.WorkspaceRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-21 23:01:21.455  INFO 7192 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 27 ms. Found 0 Redis repository interfaces.
+2026-03-21 23:01:22.957  INFO 7192 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8082 (http)
+2026-03-21 23:01:22.967  INFO 7192 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-21 23:01:22.967  INFO 7192 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-03-21 23:01:23.051  INFO 7192 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-03-21 23:01:23.051  INFO 7192 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2899 ms
+2026-03-21 23:01:23.760  INFO 7192 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-21 23:01:23.857  INFO 7192 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 5.6.15.Final
+2026-03-21 23:01:24.057  INFO 7192 --- [           main] o.hibernate.annotations.common.Version   : HCANN000001: Hibernate Commons Annotations {5.1.2.Final}
+2026-03-21 23:01:24.216  INFO 7192 --- [           main] com.zaxxer.hikari.HikariDataSource       : InterlynkHikariCP - Starting...
+2026-03-21 23:01:24.409  INFO 7192 --- [           main] com.zaxxer.hikari.HikariDataSource       : InterlynkHikariCP - Start completed.
+2026-03-21 23:01:24.425  INFO 7192 --- [           main] org.hibernate.dialect.Dialect            : HHH000400: Using dialect: org.hibernate.dialect.MySQLDialect
+2026-03-21 23:01:25.527  INFO 7192 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2026-03-21 23:01:25.539  INFO 7192 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-21 23:01:26.152 DEBUG 7192 --- [           main] c.e.c.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-03-21 23:01:26.153  INFO 7192 --- [           main] c.e.collab.config.RateLimitFilter        : Rate limiting filter initialized (bucket4j disabled for Java 8)
+2026-03-21 23:01:26.813 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.817 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; private static java.lang.RuntimeException com.enterprise.collab.controller.AdminController.lambda$removeChannelMember$6()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.848 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.849 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.removeChannelMember(java.lang.Long,java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.850 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.850 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.generateLicenseKey(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.850 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.850 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSystemSettings()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.851 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.851 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateSystemSettings(java.util.List)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.851 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.851 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateVoiceChannelSettings(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.852 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.852 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.addChannelMember(java.lang.Long,java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.852 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.852 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllUsers()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.852 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.853 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserStatus(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.853 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.853 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateChannel(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.854 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.854 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSystemStats()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.854 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.855 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getVoiceChannels()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.855 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.855 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getSetting(java.lang.String)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.856 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.856 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserRoles(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.856 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.856 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.deleteUser(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.856 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.857 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.createUser(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.857 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.857 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllChannels()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.857 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.858 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateUserAccess(java.lang.Long,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.858 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.858 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getAllRoles()]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.858 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.858 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.deleteRole(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.859 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.859 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.updateSetting(java.lang.String,java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.859 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.859 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.createRole(java.util.Map)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.860 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.860 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getUserAccess(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:26.860 DEBUG 7192 --- [           main] .PrePostAnnotationSecurityMetadataSource : @org.springframework.security.access.prepost.PreAuthorize(value=hasRole('ADMIN')) found on: com.enterprise.collab.controller.AdminController
+2026-03-21 23:01:26.860 DEBUG 7192 --- [           main] m.DelegatingMethodSecurityMetadataSource : Caching method [CacheKey[com.enterprise.collab.controller.AdminController; public org.springframework.http.ResponseEntity com.enterprise.collab.controller.AdminController.getChannel(java.lang.Long)]] with attributes [[authorize: 'hasRole('ADMIN')', filter: 'null', filterTarget: 'null']]
+2026-03-21 23:01:27.834 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/**', OPTIONS]
+2026-03-21 23:01:27.836 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/v1/auth/**']
+2026-03-21 23:01:27.836 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/auth/**']
+2026-03-21 23:01:27.836 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/ws/**']
+2026-03-21 23:01:27.836 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui/**']
+2026-03-21 23:01:27.837 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui.html']
+2026-03-21 23:01:27.837 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/v3/api-docs/**']
+2026-03-21 23:01:27.837 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/v3/api-docs.yaml']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-resources/**']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/actuator/health']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/files/**']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [hasRole('ROLE_ADMIN')] for Ant [pattern='/api/v1/admin/**']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [hasRole('ROLE_ADMIN')] for Ant [pattern='/api/admin/**']
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', POST]
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', PUT]
+2026-03-21 23:01:27.838 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', DELETE]
+2026-03-21 23:01:27.839 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/v1/**', GET]
+2026-03-21 23:01:27.839 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/api/**']
+2026-03-21 23:01:27.839 DEBUG 7192 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for any request
+2026-03-21 23:01:27.843  INFO 7192 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@27df0f3d, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@c35af2a, org.springframework.security.web.context.SecurityContextPersistenceFilter@6c6366cf, org.springframework.security.web.header.HeaderWriterFilter@60859f5a, org.springframework.web.filter.CorsFilter@44550792, org.springframework.security.web.authentication.logout.LogoutFilter@140d1230, com.enterprise.collab.security.JwtAuthenticationFilter@29a4f594, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@18acfe88, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@772861aa, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@1835d3ed, org.springframework.security.web.session.SessionManagementFilter@44c13103, org.springframework.security.web.access.ExceptionTranslationFilter@59d77850, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@6629ad09]
+2026-03-21 23:01:29.127  INFO 7192 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8082 (http) with context path ''
+2026-03-21 23:01:29.130  INFO 7192 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-03-21 23:01:29.131  INFO 7192 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@7a360554]]
+2026-03-21 23:01:29.133  INFO 7192 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-03-21 23:01:29.145 DEBUG 7192 --- [MessageBroker-1] c.e.c.service.ConnectionHealthService    : Running connection health check...
+2026-03-21 23:01:29.145  INFO 7192 --- [MessageBroker-1] c.e.c.service.ConnectionHealthService    : Health check: 0 users online (Memory)
+2026-03-21 23:01:29.147  INFO 7192 --- [           main] c.e.collab.EnterpriseCollabApplication   : Started EnterpriseCollabApplication in 9.614 seconds (JVM running for 10.169)
+2026-03-21 23:01:29.307 TRACE 7192 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [demo]
+2026-03-21 23:01:29.339 TRACE 7192 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:01:29.356 TRACE 7192 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:01:29.359 TRACE 7192 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:29.362  INFO 7192 --- [           main] c.e.collab.config.DataInitializer        : Storage directories created at: ./storage
+2026-03-21 23:01:29.373  INFO 7192 --- [           main] c.e.collab.config.DataInitializer        : Data initialization completed
+2026-03-21 23:01:30.962  INFO 7192 --- [nio-8082-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-21 23:01:30.962  INFO 7192 --- [nio-8082-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-03-21 23:01:30.963  INFO 7192 --- [nio-8082-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2026-03-21 23:01:30.977 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/calls/rooms
+2026-03-21 23:01:30.980 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:30.997 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:31.003 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:01:31.003 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:31.088 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:01:31.091 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:31.103 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:01:31.103 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:01:31.144 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:31.147 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:01:31.149 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:01:31.214 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:36.948 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114296942
+2026-03-21 23:01:36.949 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:36.949 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:01:36.950 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114296942] with attributes [permitAll]
+2026-03-21 23:01:36.950 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114296942
+2026-03-21 23:01:36.955 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:40.914 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:01:40.914 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:40.918 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:01:40.920 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:40.922 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:01:40.922 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:01:40.926 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:40.928 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:01:40.930 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:01:40.934 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:44.986 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114304981
+2026-03-21 23:01:44.986 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:44.986 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:01:44.987 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114304981] with attributes [permitAll]
+2026-03-21 23:01:44.987 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114304981
+2026-03-21 23:01:44.989 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:50.926 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:01:50.927 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:50.930 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:01:50.932 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:50.935 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:01:50.935 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:01:50.938 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:01:50.940 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:01:50.942 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:01:50.944 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:01:53.965 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114313960
+2026-03-21 23:01:53.966 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:01:53.967 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:01:53.967 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114313960] with attributes [permitAll]
+2026-03-21 23:01:53.967 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114313960
+2026-03-21 23:01:53.968 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:00.983 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:00.983 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:00.987 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:00.988 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:00.990 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:00.991 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:00.994 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:00.996 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:00.998 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:01.001 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:01.999 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114321994
+2026-03-21 23:02:01.999 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:02.000 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:02.001 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114321994] with attributes [permitAll]
+2026-03-21 23:02:02.001 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114321994
+2026-03-21 23:02:02.002 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:10.067 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114330063
+2026-03-21 23:02:10.067 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:10.068 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:10.068 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114330063] with attributes [permitAll]
+2026-03-21 23:02:10.068 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114330063
+2026-03-21 23:02:10.070 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:11.079 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:11.079 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:11.083 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:11.085 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:11.087 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:11.087 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:11.091 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:11.093 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:11.095 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:11.097 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:18.157 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114338150
+2026-03-21 23:02:18.157 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:18.158 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:18.158 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114338150] with attributes [permitAll]
+2026-03-21 23:02:18.158 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114338150
+2026-03-21 23:02:18.159 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:21.080 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:21.080 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:21.084 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:21.086 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:21.087 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:21.088 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:21.090 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:21.092 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:21.094 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:21.097 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:26.216 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114346210
+2026-03-21 23:02:26.216 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:26.217 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:26.217 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114346210] with attributes [permitAll]
+2026-03-21 23:02:26.217 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114346210
+2026-03-21 23:02:26.218 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:27.976  INFO 7192 --- [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 6, active threads = 1, queued tasks = 3, completed tasks = 2]
+2026-03-21 23:02:31.095 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:31.095 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:31.101 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:31.103 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:31.105 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:31.105 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:31.108 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:31.109 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:31.111 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:31.113 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:34.322 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114354317
+2026-03-21 23:02:34.322 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:34.323 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:34.323 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114354317] with attributes [permitAll]
+2026-03-21 23:02:34.323 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114354317
+2026-03-21 23:02:34.324 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:41.375 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:41.376 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:41.381 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:41.383 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:41.385 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:41.385 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:41.389 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:41.391 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:41.392 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:41.395 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:42.415 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114362411
+2026-03-21 23:02:42.415 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:42.417 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:42.417 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114362411] with attributes [permitAll]
+2026-03-21 23:02:42.418 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114362411
+2026-03-21 23:02:42.419 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:50.475 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114370472
+2026-03-21 23:02:50.476 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:50.476 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:50.477 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114370472] with attributes [permitAll]
+2026-03-21 23:02:50.477 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114370472
+2026-03-21 23:02:50.477 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:51.490 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:02:51.491 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:51.494 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:02:51.495 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:51.498 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:02:51.498 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:02:51.501 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:02:51.503 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:02:51.505 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:02:51.508 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:02:58.580 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114378575
+2026-03-21 23:02:58.580 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:02:58.581 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:02:58.581 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114378575] with attributes [permitAll]
+2026-03-21 23:02:58.581 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114378575
+2026-03-21 23:02:58.582 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:01.505 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:01.505 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:01.509 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:01.511 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:01.513 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:01.513 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:01.517 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:01.518 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:01.520 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:01.523 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:06.610 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114386606
+2026-03-21 23:03:06.610 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:06.611 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:06.611 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114386606] with attributes [permitAll]
+2026-03-21 23:03:06.611 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114386606
+2026-03-21 23:03:06.612 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:11.510 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:11.510 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:11.513 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:11.515 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:11.517 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:11.517 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:11.520 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:11.521 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:11.523 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:11.526 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:15.590 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114395587
+2026-03-21 23:03:15.591 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:15.592 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:15.592 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114395587] with attributes [permitAll]
+2026-03-21 23:03:15.592 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114395587
+2026-03-21 23:03:15.593 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:21.519 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:21.519 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:21.522 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:21.523 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:21.525 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:21.525 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:21.529 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:21.531 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:21.532 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:21.534 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:24.648 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114404644
+2026-03-21 23:03:24.648 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:24.649 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:24.649 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114404644] with attributes [permitAll]
+2026-03-21 23:03:24.649 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114404644
+2026-03-21 23:03:24.650 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:31.720 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:31.720 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:31.723 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:31.724 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:31.726 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:31.727 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:31.730 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:31.732 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:31.733 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:31.735 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:32.719 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114412714
+2026-03-21 23:03:32.720 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:32.720 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:32.721 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114412714] with attributes [permitAll]
+2026-03-21 23:03:32.721 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114412714
+2026-03-21 23:03:32.721 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:40.770 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114420765
+2026-03-21 23:03:40.770 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:40.771 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:40.771 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114420765] with attributes [permitAll]
+2026-03-21 23:03:40.772 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114420765
+2026-03-21 23:03:40.772 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:41.793 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:41.793 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:41.797 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:41.798 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:41.800 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:41.800 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:41.803 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:41.805 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:41.807 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:41.808 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:48.891 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114428887
+2026-03-21 23:03:48.892 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:48.892 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:48.893 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114428887] with attributes [permitAll]
+2026-03-21 23:03:48.893 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114428887
+2026-03-21 23:03:48.894 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:51.807 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:03:51.808 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:51.811 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:03:51.812 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:51.814 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:03:51.814 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:03:51.817 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:03:51.818 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:03:51.819 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:03:51.821 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:03:56.939 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114436935
+2026-03-21 23:03:56.939 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:03:56.940 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:03:56.941 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114436935] with attributes [permitAll]
+2026-03-21 23:03:56.941 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114436935
+2026-03-21 23:03:56.942 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:01.813 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:01.814 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:01.817 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:01.818 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:01.820 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:01.820 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:01.823 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:01.825 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:01.826 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:01.829 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:04.965 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114444960
+2026-03-21 23:04:04.965 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:04.966 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:04.966 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114444960] with attributes [permitAll]
+2026-03-21 23:04:04.966 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114444960
+2026-03-21 23:04:04.967 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:12.000 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:12.000 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:12.003 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:12.004 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:12.006 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:12.006 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:12.009 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:12.011 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:12.013 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:12.015 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:13.008 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114453002
+2026-03-21 23:04:13.008 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:13.009 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:13.009 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114453002] with attributes [permitAll]
+2026-03-21 23:04:13.009 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114453002
+2026-03-21 23:04:13.010 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:21.041 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114461036
+2026-03-21 23:04:21.041 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:21.042 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:21.042 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114461036] with attributes [permitAll]
+2026-03-21 23:04:21.042 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114461036
+2026-03-21 23:04:21.043 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:22.052 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:22.053 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:22.056 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:22.057 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:22.058 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:22.059 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:22.061 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:22.063 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:22.065 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:22.068 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:29.076 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114469072
+2026-03-21 23:04:29.076 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:29.077 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:29.077 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114469072] with attributes [permitAll]
+2026-03-21 23:04:29.077 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114469072
+2026-03-21 23:04:29.078 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:32.055 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:32.055 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:32.058 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:32.060 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:32.061 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:32.061 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:32.065 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:32.066 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:32.069 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:32.071 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:37.168 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114477162
+2026-03-21 23:04:37.168 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:37.170 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:37.170 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114477162] with attributes [permitAll]
+2026-03-21 23:04:37.170 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114477162
+2026-03-21 23:04:37.171 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:42.059 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:42.059 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:42.062 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:42.063 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:42.065 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:42.065 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:42.067 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:42.070 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:42.072 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:42.074 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:46.176 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114486171
+2026-03-21 23:04:46.176 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:46.178 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:46.178 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114486171] with attributes [permitAll]
+2026-03-21 23:04:46.178 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114486171
+2026-03-21 23:04:46.179 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:52.067 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:04:52.067 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:52.070 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:04:52.072 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:52.074 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:04:52.074 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:04:52.077 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:04:52.078 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:04:52.079 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:04:52.081 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:04:55.150 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114495144
+2026-03-21 23:04:55.150 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:04:55.151 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:04:55.151 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114495144] with attributes [permitAll]
+2026-03-21 23:04:55.151 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114495144
+2026-03-21 23:04:55.152 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:02.191 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:02.191 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:02.194 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:02.195 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:02.197 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:02.197 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:02.199 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:02.201 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:02.203 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:02.205 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:03.261 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114503256
+2026-03-21 23:05:03.262 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:03.262 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:03.262 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114503256] with attributes [permitAll]
+2026-03-21 23:05:03.263 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114503256
+2026-03-21 23:05:03.263 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:11.304 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114511300
+2026-03-21 23:05:11.304 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:11.304 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:11.305 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114511300] with attributes [permitAll]
+2026-03-21 23:05:11.305 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114511300
+2026-03-21 23:05:11.306 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:12.315 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:12.315 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:12.318 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:12.319 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:12.321 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:12.321 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:12.324 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:12.325 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:12.327 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:12.329 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:19.398 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114519394
+2026-03-21 23:05:19.398 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:19.398 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:19.398 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114519394] with attributes [permitAll]
+2026-03-21 23:05:19.399 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114519394
+2026-03-21 23:05:19.400 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:22.328 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:22.329 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:22.331 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:22.332 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:22.334 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:22.334 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:22.337 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:22.338 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:22.340 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:22.342 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:27.466 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114527463
+2026-03-21 23:05:27.467 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:27.467 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:27.467 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114527463] with attributes [permitAll]
+2026-03-21 23:05:27.468 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114527463
+2026-03-21 23:05:27.468 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:32.338 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:32.339 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:32.342 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:32.343 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:32.345 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:32.345 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:32.349 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:32.351 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:32.352 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:32.354 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:35.573 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114535567
+2026-03-21 23:05:35.573 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:35.573 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:35.573 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114535567] with attributes [permitAll]
+2026-03-21 23:05:35.574 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114535567
+2026-03-21 23:05:35.574 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:42.635 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:42.635 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:42.639 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:42.640 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:42.641 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:42.641 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:42.644 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:42.645 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:42.646 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:42.649 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:43.666 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114543663
+2026-03-21 23:05:43.666 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:43.666 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:43.666 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114543663] with attributes [permitAll]
+2026-03-21 23:05:43.667 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114543663
+2026-03-21 23:05:43.667 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:51.773 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114551768
+2026-03-21 23:05:51.774 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:51.774 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:51.774 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114551768] with attributes [permitAll]
+2026-03-21 23:05:51.775 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114551768
+2026-03-21 23:05:51.776 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:52.791 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:05:52.791 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:52.794 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:05:52.795 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:52.797 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:05:52.797 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:05:52.801 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:05:52.802 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:05:52.804 TRACE 7192 --- [nio-8082-exec-2] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:05:52.806 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:05:59.885 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114559879
+2026-03-21 23:05:59.885 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:05:59.886 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:05:59.886 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114559879] with attributes [permitAll]
+2026-03-21 23:05:59.886 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114559879
+2026-03-21 23:05:59.887 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:02.801 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:02.802 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:02.805 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:02.806 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:02.808 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:02.808 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:02.810 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:02.812 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:02.813 TRACE 7192 --- [nio-8082-exec-1] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:02.816 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:07.928 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114567924
+2026-03-21 23:06:07.929 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:07.929 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:07.930 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114567924] with attributes [permitAll]
+2026-03-21 23:06:07.930 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114567924
+2026-03-21 23:06:07.930 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:12.806 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:12.806 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:12.808 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:12.810 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:12.811 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:12.811 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:12.814 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:12.815 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:12.817 TRACE 7192 --- [nio-8082-exec-9] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:12.820 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:16.895 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114576891
+2026-03-21 23:06:16.895 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:16.896 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:16.896 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114576891] with attributes [permitAll]
+2026-03-21 23:06:16.896 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114576891
+2026-03-21 23:06:16.897 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:22.814 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:22.815 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:22.817 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:22.818 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:22.820 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:22.820 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:22.822 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:22.824 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:22.825 TRACE 7192 --- [nio-8082-exec-7] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:22.827 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:25.930 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114585924
+2026-03-21 23:06:25.930 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:25.931 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:25.931 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114585924] with attributes [permitAll]
+2026-03-21 23:06:25.931 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114585924
+2026-03-21 23:06:25.932 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:29.156 DEBUG 7192 --- [MessageBroker-3] c.e.c.service.ConnectionHealthService    : Running connection health check...
+2026-03-21 23:06:29.157  INFO 7192 --- [MessageBroker-3] c.e.c.service.ConnectionHealthService    : Health check: 0 users online (Memory)
+2026-03-21 23:06:32.976 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:32.976 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:32.979 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:32.981 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:32.983 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:32.983 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:32.985 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:32.987 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:32.988 TRACE 7192 --- [nio-8082-exec-5] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:32.990 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:34.019 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114594015
+2026-03-21 23:06:34.019 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:34.020 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:34.020 DEBUG 7192 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114594015] with attributes [permitAll]
+2026-03-21 23:06:34.020 DEBUG 7192 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114594015
+2026-03-21 23:06:34.020 DEBUG 7192 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:42.055 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114602052
+2026-03-21 23:06:42.055 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:42.056 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:42.056 DEBUG 7192 --- [nio-8082-exec-2] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114602052] with attributes [permitAll]
+2026-03-21 23:06:42.056 DEBUG 7192 --- [nio-8082-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114602052
+2026-03-21 23:06:42.057 DEBUG 7192 --- [nio-8082-exec-2] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:43.067 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:43.067 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:43.070 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:43.071 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:43.073 DEBUG 7192 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:43.073 DEBUG 7192 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:43.077 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:43.078 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:43.080 TRACE 7192 --- [nio-8082-exec-3] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:43.082 DEBUG 7192 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:50.157 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114610150
+2026-03-21 23:06:50.157 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:50.157 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:50.158 DEBUG 7192 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114610150] with attributes [permitAll]
+2026-03-21 23:06:50.158 DEBUG 7192 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114610150
+2026-03-21 23:06:50.158 DEBUG 7192 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:53.076 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:06:53.077 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:53.080 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:06:53.080 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:53.082 DEBUG 7192 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:06:53.082 DEBUG 7192 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:06:53.084 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:06:53.087 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:06:53.088 TRACE 7192 --- [nio-8082-exec-4] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:06:53.089 DEBUG 7192 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:06:58.195 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114618191
+2026-03-21 23:06:58.196 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:06:58.196 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:06:58.197 DEBUG 7192 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114618191] with attributes [permitAll]
+2026-03-21 23:06:58.197 DEBUG 7192 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114618191
+2026-03-21 23:06:58.197 DEBUG 7192 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:07:03.086 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:07:03.086 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:07:03.088 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:07:03.090 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:07:03.091 DEBUG 7192 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:07:03.092 DEBUG 7192 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:07:03.094 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:07:03.095 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:07:03.097 TRACE 7192 --- [nio-8082-exec-6] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:07:03.098 DEBUG 7192 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:07:06.251 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114626247
+2026-03-21 23:07:06.252 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:07:06.252 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:07:06.253 DEBUG 7192 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114626247] with attributes [permitAll]
+2026-03-21 23:07:06.253 DEBUG 7192 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114626247
+2026-03-21 23:07:06.253 DEBUG 7192 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:07:13.287 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/calls/rooms
+2026-03-21 23:07:13.287 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:07:13.291 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [admin@interlynk.com]
+2026-03-21 23:07:13.292 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:07:13.294 DEBUG 7192 --- [nio-8082-exec-8] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/calls/rooms] with attributes [authenticated]
+2026-03-21 23:07:13.294 DEBUG 7192 --- [nio-8082-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/calls/rooms
+2026-03-21 23:07:13.297 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [1]
+2026-03-21 23:07:13.299 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [2]
+2026-03-21 23:07:13.300 TRACE 7192 --- [nio-8082-exec-8] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [BIGINT] - [3]
+2026-03-21 23:07:13.302 DEBUG 7192 --- [nio-8082-exec-8] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-03-21 23:07:14.297 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /ws/info?t=1774114634294
+2026-03-21 23:07:14.298 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-03-21 23:07:14.298 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-03-21 23:07:14.298 DEBUG 7192 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /ws/info?t=1774114634294] with attributes [permitAll]
+2026-03-21 23:07:14.298 DEBUG 7192 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /ws/info?t=1774114634294
+2026-03-21 23:07:14.299 DEBUG 7192 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request

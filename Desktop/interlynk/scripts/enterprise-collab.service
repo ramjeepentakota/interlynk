@@ -1,0 +1,32 @@
+[Unit]
+Description=Enterprise Collaboration Platform
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=enterprise
+Group=enterprise
+WorkingDirectory=/opt/company-platform
+ExecStart=/usr/bin/java -jar /opt/company-platform/enterprise-collab.jar
+Restart=always
+RestartSec=10
+
+# Environment variables
+Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64"
+Environment="SPRING_PROFILES_ACTIVE=production"
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/company-platform
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=enterprise-collab
+
+[Install]
+WantedBy=multi-user.target

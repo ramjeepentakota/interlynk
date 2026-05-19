@@ -1,0 +1,44 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.interlynk:interlynk-platform >------------------
+[INFO] Building Interlynk Platform 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ interlynk-platform ---
+[INFO] Deleting C:\Users\jayan\Desktop\interlynk-msgworking-21mar26\interlynk\backend\target
+[INFO] 
+[INFO] --- resources:3.2.0:resources (default-resources) @ interlynk-platform ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] Copying 1 resource
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- compiler:3.10.1:compile (default-compile) @ interlynk-platform ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 99 source files to C:\Users\jayan\Desktop\interlynk-msgworking-21mar26\interlynk\backend\target\classes
+[INFO] /C:/Users/jayan/Desktop/interlynk-msgworking-21mar26/interlynk/backend/src/main/java/com/enterprise/collab/controller/AdminController.java: C:\Users\jayan\Desktop\interlynk-msgworking-21mar26\interlynk\backend\src\main\java\com\enterprise\collab\controller\AdminController.java uses unchecked or unsafe operations.
+[INFO] /C:/Users/jayan/Desktop/interlynk-msgworking-21mar26/interlynk/backend/src/main/java/com/enterprise/collab/controller/AdminController.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- resources:3.2.0:testResources (default-testResources) @ interlynk-platform ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] skip non existing resourceDirectory C:\Users\jayan\Desktop\interlynk-msgworking-21mar26\interlynk\backend\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.10.1:testCompile (default-testCompile) @ interlynk-platform ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:2.22.2:test (default-test) @ interlynk-platform ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.2.2:jar (default-jar) @ interlynk-platform ---
+[INFO] Building jar: C:\Users\jayan\Desktop\interlynk-msgworking-21mar26\interlynk\backend\target\enterprise-collab.jar
+[INFO] 
+[INFO] --- spring-boot:2.7.18:repackage (repackage) @ interlynk-platform ---
+[INFO] Replacing main artifact with repackaged archive
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.988 s
+[INFO] Finished at: 2026-04-09T16:56:42+05:30
+[INFO] ------------------------------------------------------------------------
