@@ -5,13 +5,34 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
-    
+
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.createdAt > :since")
+    long countSince(@Param("since") LocalDateTime since);
+
+    // ── eDiscovery: filter by sender / keyword / date range ──
+    @Query("SELECT m FROM Message m WHERE " +
+           "(:senderId IS NULL OR m.sender.id = :senderId) " +
+           "AND (:channelId IS NULL OR m.channel.id = :channelId) " +
+           "AND (:keyword IS NULL OR LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND (:from IS NULL OR m.createdAt >= :from) " +
+           "AND (:to IS NULL OR m.createdAt <= :to) " +
+           "ORDER BY m.createdAt DESC")
+    org.springframework.data.domain.Page<Message> eDiscovery(
+            @Param("senderId") Long senderId,
+            @Param("channelId") Long channelId,
+            @Param("keyword") String keyword,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            org.springframework.data.domain.Pageable pageable);
+
     Page<Message> findByChannelIdOrderByCreatedAtAsc(Long channelId, Pageable pageable);
     
     Page<Message> findByChannelId(Long channelId, Pageable pageable);

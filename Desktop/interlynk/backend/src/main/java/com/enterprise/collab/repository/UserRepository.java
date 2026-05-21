@@ -5,7 +5,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +40,27 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     @Query("SELECT u FROM User u WHERE u.status = :status AND u.presence = :presence")
     List<User> findByStatusAndPresence(User.UserStatus status, User.Presence presence);
+
+    // ── Admin directory: combined search + filters + pagination ──────────
+    @Query("SELECT u FROM User u WHERE " +
+           "(:q IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "  OR LOWER(u.displayName) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "  OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))) " +
+           "AND (:status IS NULL OR u.status = :status) " +
+           "AND (:guest IS NULL OR u.guest = :guest) " +
+           "AND (:department IS NULL OR LOWER(u.department) = LOWER(:department))")
+    Page<User> adminSearch(@Param("q") String q,
+                           @Param("status") User.UserStatus status,
+                           @Param("guest") Boolean guest,
+                           @Param("department") String department,
+                           Pageable pageable);
+
+    long countByStatus(User.UserStatus status);
+
+    long countByGuestTrue();
+
+    long countByCreatedAtAfter(LocalDateTime since);
+
+    @Query("SELECT DISTINCT u.department FROM User u WHERE u.department IS NOT NULL AND u.department <> '' ORDER BY u.department")
+    List<String> findDistinctDepartments();
 }

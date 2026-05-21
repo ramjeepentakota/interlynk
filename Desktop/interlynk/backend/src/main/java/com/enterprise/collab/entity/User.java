@@ -45,7 +45,43 @@ public class User {
     
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
-    
+
+    // ── Directory / org profile (admin-managed) ──────────────
+    @Column(name = "job_title", length = 120)
+    private String jobTitle;
+
+    @Column(length = 120)
+    private String department;
+
+    @Column(name = "phone_number", length = 40)
+    private String phoneNumber;
+
+    @Column(name = "is_guest", nullable = false)
+    @Builder.Default
+    private boolean guest = false;
+
+    @Column(name = "suspended_reason", length = 255)
+    private String suspendedReason;
+
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    // ── MFA enrollment ──────────────────────────────────────
+    @Column(name = "mfa_enabled", nullable = false)
+    @Builder.Default
+    private boolean mfaEnabled = false;
+
+    /** TOTP secret (base32). Stored only when enrolled. */
+    @Column(name = "mfa_secret", length = 64)
+    private String mfaSecret;
+
+    @Column(name = "mfa_required", nullable = false)
+    @Builder.Default
+    private boolean mfaRequired = false;
+
+    @Column(name = "mfa_enrolled_at")
+    private LocalDateTime mfaEnrolledAt;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -73,7 +109,7 @@ public class User {
     }
     
     public enum UserStatus {
-        ACTIVE, INACTIVE, SUSPENDED
+        ACTIVE, INACTIVE, SUSPENDED, BLOCKED
     }
     
     public enum Presence {

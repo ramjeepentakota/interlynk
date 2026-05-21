@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .antMatchers("/v3/api-docs.yaml").permitAll()
                 .antMatchers("/swagger-resources/**").permitAll()
                 .antMatchers("/actuator/health").permitAll()
+                .antMatchers("/actuator/health/liveness").permitAll()
+                .antMatchers("/actuator/health/readiness").permitAll()
                 .antMatchers("/api/files/**").permitAll()
 
                 // Admin endpoints
@@ -92,9 +94,24 @@ public class SecurityConfig {
                     .map(String::trim)
                     .collect(Collectors.toList()));
         } else {
-            // For development, use pattern that allows localhost and common dev origins
+            // For development, allow localhost and private LAN origins on either
+            // http:// or https:// (any port). HTTPS LAN origins are needed when
+            // the dev server runs with the basic-ssl plugin so that getUserMedia
+            // works across the LAN.
             configuration.setAllowedOriginPatterns(
-                    Arrays.asList("http://localhost:[*]", "http://127.0.0.1:[*]", "http://[::1]:[*]"));
+                    Arrays.asList(
+                            "http://localhost:[*]",
+                            "https://localhost:[*]",
+                            "http://127.0.0.1:[*]",
+                            "https://127.0.0.1:[*]",
+                            "http://[::1]:[*]",
+                            "https://[::1]:[*]",
+                            "http://192.168.*:[*]",
+                            "https://192.168.*:[*]",
+                            "http://10.*:[*]",
+                            "https://10.*:[*]",
+                            "http://172.16.*:[*]",
+                            "https://172.16.*:[*]"));
         }
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

@@ -2,8 +2,31 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-// API base URL - change this to your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
+// API base URL.
+// By default the frontend talks to its OWN origin (relative URLs). In dev,
+// Vite proxies /api and /ws to the Spring Boot backend; in prod, an HTTPS
+// reverse proxy (nginx/Caddy/etc.) does the same. This keeps the browser on
+// a single secure origin so getUserMedia + cookies + CORS all behave.
+// Override with VITE_API_URL when you really need a cross-origin backend.
+//
+// Guard against mixed content: an absolute http:// backend URL on an https://
+// page is blocked by the browser. Fall back to same-origin (the proxy) so
+// requests stay on https:// and the realtime WebSocket isn't killed.
+const API_BASE_URL = (() => {
+  const configured = import.meta.env.VITE_API_URL ?? '';
+  if (
+    configured &&
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    configured.startsWith('http://')
+  ) {
+    console.warn(
+      `[api] Ignoring insecure VITE_API_URL "${configured}" on an https page; using same-origin proxy instead.`
+    );
+    return '';
+  }
+  return configured;
+})();
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -56,8 +79,10 @@ apiClient.interceptors.response.use(
           const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
             refreshToken,
           });
-          const { token: newToken } = response.data;
-          useAuthStore.getState().setTokens(newToken, refreshToken);
+          // Backend returns { accessToken, refreshToken } (TokenRefreshResponse)
+          const newToken = response.data.accessToken ?? response.data.token;
+          const newRefresh = response.data.refreshToken ?? refreshToken;
+          useAuthStore.getState().setTokens(newToken, newRefresh);
           
           // Retry the original request
           if (originalRequest.headers) {
@@ -100,7 +125,7 @@ export const authApi = {
     apiClient.post('/api/v1/auth/change-password', { currentPassword, newPassword }),
   
   searchUsers: (query: string) =>
-    apiClient.get(`/api/auth/users/search?query=${encodeURIComponent(query)}`),
+    apiClient.get(`/api/v1/auth/users/search?query=${encodeURIComponent(query)}`),
 };
 
 // Workspace API
@@ -124,6 +149,23 @@ export const workspaceApi = {
   
   removeMember: (workspaceId: string, userId: string) =>
     apiClient.delete(`/api/workspaces/${workspaceId}/members/${userId}`),
+
+  // ─── Workspace files (Monaco editor) ───────────────────────────────
+  getFiles: (workspaceId: string | number) =>
+    apiClient.get<Array<{ filePath: string; language?: string; updatedAt?: string }>>(
+      `/api/workspaces/${workspaceId}/files`,
+    ),
+
+  getFile: (workspaceId: string | number, filePath: string) =>
+    apiClient.get<{ filePath: string; content: string; language?: string }>(
+      `/api/workspaces/${workspaceId}/files/${encodeURIComponent(filePath)}`,
+    ),
+
+  saveFile: (workspaceId: string | number, filePath: string, content: string) =>
+    apiClient.post<{ filePath: string; updatedAt: string }>(
+      `/api/workspaces/${workspaceId}/files`,
+      { filePath, content },
+    ),
 };
 
 // Channel API
@@ -142,9 +184,41 @@ export const channelApi = {
   
   addMember: (channelId: string, username: string) =>
     apiClient.post(`/api/channels/${channelId}/members?username=${username}`),
-  
+
   removeMember: (channelId: string, username: string) =>
     apiClient.delete(`/api/channels/${channelId}/members?username=${username}`),
+
+  // Voice channel session control (persistent VOICE-type channels)
+  joinVoiceChannel: (channelId: string) =>
+    apiClient.post(`/api/channels/${channelId}/voice/join`),
+
+  leaveVoiceChannel: (channelId: string) =>
+    apiClient.post(`/api/channels/${channelId}/voice/leave`),
+
+  getVoiceChannelStatus: (channelId: string) =>
+    apiClient.get(`/api/channels/${channelId}/voice`),
+};
+
+// Direct Message (person-to-person inbox) API
+export const dmApi = {
+  getConversations: () => apiClient.get('/api/dm/conversations'),
+
+  getConversation: (userId: string | number) =>
+    apiClient.get(`/api/dm/conversations/${userId}`),
+
+  sendMessage: (recipientId: string | number, content: string) =>
+    apiClient.post('/api/dm', { recipientId: Number(recipientId), content }),
+
+  markRead: (userId: string | number) =>
+    apiClient.post(`/api/dm/conversations/${userId}/read`),
+
+  getUnreadCount: () => apiClient.get('/api/dm/unread-count'),
+};
+
+// LiveKit (SFU) media token API
+export const liveKitApi = {
+  getToken: (room: string | number, canPublish = true) =>
+    apiClient.get(`/api/calls/livekit/token?room=${encodeURIComponent(String(room))}&canPublish=${canPublish}`),
 };
 
 // Message API
@@ -164,10 +238,10 @@ export const messageApi = {
     apiClient.post(`/api/messages/${messageId}/reactions`, { emoji }),
   
   removeReaction: (messageId: string, emoji: string) =>
-    apiClient.delete(`/api/messages/${messageId}/reactions`),
-  
+    apiClient.delete(`/api/messages/${messageId}/reactions?emoji=${encodeURIComponent(emoji)}`),
+
   getThreadMessages: (messageId: string) =>
-    apiClient.get(`/api/messages/${messageId}/reply`),
+    apiClient.get(`/api/messages/${messageId}/thread`),
   
   sendThreadMessage: (messageId: string, content: string) =>
     apiClient.post(`/api/messages/${messageId}/reply`, { content }),
@@ -206,18 +280,16 @@ export const callApi = {
 
 // Notification API
 export const notificationApi = {
-  getNotifications: (page = 0, size = 20) =>
-    apiClient.get(`/api/notifications?page=${page}&size=${size}`),
-  
+  getNotifications: () => apiClient.get('/api/notifications'),
+
+  getUnreadNotifications: () => apiClient.get('/api/notifications/unread'),
+
   markAsRead: (notificationId: string) =>
-    apiClient.put(`/api/notifications/${notificationId}/read`),
-  
-  markAllAsRead: () => apiClient.put('/api/notifications/read-all'),
-  
-  deleteNotification: (notificationId: string) =>
-    apiClient.delete(`/api/notifications/${notificationId}`),
-  
-  getUnreadCount: () => apiClient.get('/api/notifications/unread-count'),
+    apiClient.post(`/api/notifications/${notificationId}/read`),
+
+  markAllAsRead: () => apiClient.post('/api/notifications/read-all'),
+
+  getUnreadCount: () => apiClient.get('/api/notifications/count'),
 };
 
 // Code Execution API
@@ -319,6 +391,37 @@ export const adminApi = {
     apiClient.post('/api/admin/roles', data),
   
   deleteRole: (roleId: string) => apiClient.delete(`/api/admin/roles/${roleId}`),
+};
+
+// ─── New endpoints introduced in production-hardening pass ────────────────────
+
+export const searchApi = {
+  /** Cross-channel full-text search. scope: 'all' | 'messages' | 'users'. */
+  search: (query: string, scope: 'all' | 'messages' | 'users' = 'all', limit = 50) =>
+    apiClient.get('/api/search', { params: { q: query, scope, limit } }),
+};
+
+export const readReceiptApi = {
+  markRead: (channelId: number | string, lastMessageId: number | string) =>
+    apiClient.post(`/api/channels/${channelId}/read`, { lastMessageId }),
+  getReadIds: (channelId: number | string) =>
+    apiClient.get<number[]>(`/api/channels/${channelId}/read`),
+};
+
+export const scheduledMessageApi = {
+  list: () => apiClient.get('/api/scheduled-messages'),
+  create: (data: { channelId: number | string; content: string; dispatchAt: string }) =>
+    apiClient.post('/api/scheduled-messages', data),
+  cancel: (id: number | string) => apiClient.delete(`/api/scheduled-messages/${id}`),
+};
+
+export const webhookAdminApi = {
+  list: () => apiClient.get('/api/admin/webhooks'),
+  create: (data: { name: string; url: string; events: string; secret?: string; active?: boolean }) =>
+    apiClient.post('/api/admin/webhooks', data),
+  update: (id: number | string, data: Partial<{ name: string; url: string; events: string; secret: string; active: boolean }>) =>
+    apiClient.put(`/api/admin/webhooks/${id}`, data),
+  delete: (id: number | string) => apiClient.delete(`/api/admin/webhooks/${id}`),
 };
 
 export default apiClient;

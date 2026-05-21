@@ -65,6 +65,18 @@ public class Channel {
     @Column(name = "is_locked")
     @Builder.Default
     private Boolean isLocked = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", length = 20)
+    @Builder.Default
+    private Visibility visibility = Visibility.STANDARD;
+
+    @Column(name = "archived", nullable = false)
+    @Builder.Default
+    private boolean archived = false;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
     
     // Link to voice call room for voice channels
     @ManyToOne(fetch = FetchType.LAZY)
@@ -102,5 +114,11 @@ public class Channel {
     
     public boolean isTextChannel() {
         return this.type == ChannelType.TEXT || this.type == ChannelType.PUBLIC || this.type == ChannelType.PRIVATE;
+    }
+
+    public enum Visibility {
+        STANDARD,  // visible to all team members
+        PRIVATE,   // restricted to selected members
+        SHARED     // shared with external/other teams
     }
 }

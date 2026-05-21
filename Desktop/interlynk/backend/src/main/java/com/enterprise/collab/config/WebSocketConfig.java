@@ -43,18 +43,35 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         @Override
         public void registerStompEndpoints(StompEndpointRegistry registry) {
+                // Allow localhost and private LAN origins (any port) on either
+                // http:// or https:// — HTTPS is required when the frontend
+                // dev server uses the basic-ssl plugin so that the browser
+                // exposes camera/microphone (getUserMedia) over the LAN.
+                String[] originPatterns = {
+                                "http://localhost:[*]",
+                                "https://localhost:[*]",
+                                "http://127.0.0.1:[*]",
+                                "https://127.0.0.1:[*]",
+                                "http://192.168.*:[*]",
+                                "https://192.168.*:[*]",
+                                "http://10.*:[*]",
+                                "https://10.*:[*]",
+                                "http://172.16.*:[*]",
+                                "https://172.16.*:[*]"
+                };
+
                 // Main WebSocket endpoint with SockJS fallback
                 registry.addEndpoint("/ws")
-                                .setAllowedOrigins("http://localhost:5173")
+                                .setAllowedOriginPatterns(originPatterns)
                                 .withSockJS();
 
                 // WebSocket endpoint without SockJS (for native WebSocket)
                 registry.addEndpoint("/ws")
-                                .setAllowedOrigins("http://localhost:5173");
+                                .setAllowedOriginPatterns(originPatterns);
 
                 // Endpoint for call signaling
                 registry.addEndpoint("/ws/call")
-                                .setAllowedOrigins("http://localhost:5173")
+                                .setAllowedOriginPatterns(originPatterns)
                                 .withSockJS();
         }
 

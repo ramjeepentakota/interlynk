@@ -67,4 +67,23 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
      */
     @Query("SELECT c FROM Channel c JOIN c.members m WHERE c.id = :channelId AND m.id = :userId")
     Optional<Channel> findChannelForUser(@Param("channelId") Long channelId, @Param("userId") Long userId);
+
+    // ── Admin Module 2 search ─────────────────────────────────
+    @Query("SELECT c FROM Channel c WHERE " +
+           "(:q IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "  OR LOWER(c.description) LIKE LOWER(CONCAT('%', :q, '%'))) " +
+           "AND (:teamId IS NULL OR c.team.id = :teamId) " +
+           "AND (:archived IS NULL OR c.archived = :archived) " +
+           "AND (:type IS NULL OR c.type = :type) " +
+           "AND (:visibility IS NULL OR c.visibility = :visibility)")
+    org.springframework.data.domain.Page<Channel> adminSearch(
+            @Param("q") String q,
+            @Param("teamId") Long teamId,
+            @Param("archived") Boolean archived,
+            @Param("type") Channel.ChannelType type,
+            @Param("visibility") Channel.Visibility visibility,
+            org.springframework.data.domain.Pageable pageable);
+
+    long countByArchivedTrue();
+    long countByVisibility(Channel.Visibility visibility);
 }

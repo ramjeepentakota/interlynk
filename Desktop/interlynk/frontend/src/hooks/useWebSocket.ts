@@ -61,7 +61,7 @@ export function useWebSocket() {
       }
 
       stompClient = new Client({
-        webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_URL || 'http://localhost:8082'}/ws`),
+        webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_URL ?? ''}/ws`),
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },

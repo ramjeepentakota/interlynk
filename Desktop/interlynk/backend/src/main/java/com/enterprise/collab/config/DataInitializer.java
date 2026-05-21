@@ -10,6 +10,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +34,9 @@ public class DataInitializer implements CommandLineRunner {
     private final CallRoomRepository callRoomRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Value("${app.storage.base-path:/opt/company-platform}")
     private String storageBasePath;
 
@@ -45,7 +50,9 @@ public class DataInitializer implements CommandLineRunner {
         initializeDemoUser();
         initializeAdminUser();
         initializeDefaultVoiceChannels();
-        initializeDefaultTextChannels();
+        // No default chats: never seed text channels and remove any
+        // previously seeded "general"/"random"/"announcements".
+        cleanupDefaultTextChannels();
 
         log.info("Data initialization completed successfully");
     }
@@ -195,46 +202,49 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initializeDefaultTextChannels() {
-        if (channelRepository.count() == 0) {
-            log.info("Initializing default text channels...");
-
-            List<User> allUsers = userRepository.findAll();
-            if (allUsers.isEmpty()) {
-                log.warn("No users found to create default channels");
+    /**
+     * The platform must not ship with any default chats. This removes the
+     * legacy seeded "general"/"random"/"announcements" channels (and their
+     * dependent rows) if a previous build created them. User-created
+     * channels are never touched.
+     */
+    private void cleanupDefaultTextChannels() {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Number> ids = entityManager.createNativeQuery(
+                    "SELECT id FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements')")
+                    .getResultList();
+            if (ids == null || ids.isEmpty()) {
                 return;
             }
 
-            User creator = allUsers.get(0);
+            log.info("Removing {} legacy default text channel(s)...", ids.size());
+            String inClause = "(SELECT id FROM messages WHERE channel_id IN "
+                    + "(SELECT id FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements')))";
 
-            Channel generalChannel = Channel.builder()
-                    .name("general")
-                    .description("General discussion for the team")
-                    .type(Channel.ChannelType.PUBLIC)
-                    .createdBy(creator)
-                    .build();
-            generalChannel.getMembers().addAll(allUsers);
-            channelRepository.save(generalChannel);
+            entityManager.createNativeQuery("DELETE FROM reactions WHERE message_id IN " + inClause).executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM attachments WHERE message_id IN " + inClause).executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM message_read_receipts WHERE message_id IN " + inClause).executeUpdate();
+            // Break the self-referencing parent_id FK before deleting messages.
+            entityManager.createNativeQuery(
+                    "UPDATE messages SET parent_id = NULL WHERE channel_id IN "
+                    + "(SELECT id FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements'))")
+                    .executeUpdate();
+            entityManager.createNativeQuery(
+                    "DELETE FROM messages WHERE channel_id IN "
+                    + "(SELECT id FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements'))")
+                    .executeUpdate();
+            entityManager.createNativeQuery(
+                    "DELETE FROM channel_members WHERE channel_id IN "
+                    + "(SELECT id FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements'))")
+                    .executeUpdate();
+            entityManager.createNativeQuery(
+                    "DELETE FROM channels WHERE team_id IS NULL AND name IN ('general','random','announcements')")
+                    .executeUpdate();
 
-            Channel randomChannel = Channel.builder()
-                    .name("random")
-                    .description("Random chat and off-topic discussions")
-                    .type(Channel.ChannelType.PUBLIC)
-                    .createdBy(creator)
-                    .build();
-            randomChannel.getMembers().addAll(allUsers);
-            channelRepository.save(randomChannel);
-
-            Channel announcementsChannel = Channel.builder()
-                    .name("announcements")
-                    .description("Important announcements and updates")
-                    .type(Channel.ChannelType.PUBLIC)
-                    .createdBy(creator)
-                    .build();
-            announcementsChannel.getMembers().addAll(allUsers);
-            channelRepository.save(announcementsChannel);
-
-            log.info("Default text channels created: general, random, announcements");
+            log.info("Legacy default text channels removed.");
+        } catch (Exception e) {
+            log.warn("Could not clean up default text channels: {}", e.getMessage());
         }
     }
 

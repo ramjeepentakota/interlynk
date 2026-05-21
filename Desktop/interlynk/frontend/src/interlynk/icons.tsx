@@ -83,6 +83,8 @@ export const Ic = {
   Book: sv(<><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></>),
   Loader: sv(<path d="M21 12a9 9 0 1 1-6.219-8.56" />),
   Thread: sv(<><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11M5 9H3m18 0h-2M5 21h14a2 2 0 0 0 2-2v-4M5 21H3m18 0h-2" /></>),
+  UserPlus: sv(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" x2="19" y1="8" y2="14" /><line x1="22" x2="16" y1="11" y2="11" /></>),
+  KeyRound: sv(<><circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" /></>),
 } satisfies Record<string, (p: IconProps) => ReactElement>;
 
 export type IconName = keyof typeof Ic;

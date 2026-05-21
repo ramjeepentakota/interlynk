@@ -6,12 +6,21 @@ server:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
     min-response-size: 1024
+  # Drain in-flight requests on SIGTERM instead of cutting them off.
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never
 
 spring:
   application:
     name: interlynk
   main:
     allow-bean-definition-overriding: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:interlynk}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useConfigs=maxPerformance
@@ -35,7 +44,7 @@ spring:
     show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
         jdbc:
           batch_size: 20
@@ -60,6 +69,19 @@ spring:
       fail-on-unknown-properties: false
     time-zone: UTC
     default-property-inclusion: non_null
+
+  # SMTP — defaults to "no host", in which case EmailService no-ops.
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
 
   web-resources:
     static-locations: classpath:/static/
@@ -116,25 +138,38 @@ app:
     enable-video-calls: true
     enable-screen-sharing: true
 
-# Logging configuration
+  # Outbound email — disabled by default (set spring.mail.host + EMAIL_ENABLED=true)
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from: ${EMAIL_FROM:noreply@interlynk.local}
+    subject-prefix: "[Interlynk] "
+
+  # Data retention sweeper (see RetentionScheduler)
+  retention:
+    enabled: ${RETENTION_ENABLED:true}
+    messages-days: ${RETENTION_MESSAGES_DAYS:0}     # 0 = never delete
+    audit-days: ${RETENTION_AUDIT_DAYS:365}
+    notifications-days: ${RETENTION_NOTIFICATIONS_DAYS:60}
+    login-history-days: ${RETENTION_LOGIN_DAYS:90}
+    sweep-cron: ${RETENTION_CRON:0 30 3 * * *}      # 03:30 every day
+
+# LiveKit (SFU) configuration — enables real multi-party audio/video.
+# Leave blank to run without a media server: calls still show the participant
+# roster but carry no live media. Get credentials from https://cloud.livekit.io
+# or a self-hosted LiveKit server.
+livekit:
+  url: ${LIVEKIT_URL:}            # e.g. wss://your-project.livekit.cloud
+  api-key: ${LIVEKIT_API_KEY:}    # e.g. APIxxxxxxxxxxx
+  api-secret: ${LIVEKIT_API_SECRET:}
+  token-ttl-seconds: ${LIVEKIT_TOKEN_TTL:21600}  # 6 hours
+
+# Logging configuration (rolling + JSON appenders live in logback-spring.xml)
 logging:
+  file:
+    name: ${app.storage.logs-path}/application.log
   level:
     root: ${LOG_LEVEL:INFO}
     com.enterprise.collab: ${LOG_LEVEL_APP:DEBUG}
-    org.springframework.web: INFO
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: WARN
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  file:
-    name: ${app.storage.logs-path}/application.log
-    max-size: 50MB
-    max-history: 30
-    pattern:
-      file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  logback:
-    rollingpolicy:
-      max-history: 30
-      total-size-cap: 3GB
 
 # WebSocket configuration
 springwebsocket:
@@ -178,6 +213,14 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+      # Spring Boot resolves liveness/readiness automatically when probes.enabled=true
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
   metrics:
     export:
       prometheus:

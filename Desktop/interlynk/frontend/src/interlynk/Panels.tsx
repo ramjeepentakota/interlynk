@@ -1,29 +1,31 @@
-/* InterLynk TopBar + ChatPanel + Thread + MainLayout — ported from il-panels.jsx
-   (fixed the prototype's duplicated ChatPanel hook block / channel lookup) */
+/* InterLynk TopBar + ChatPanel + Thread + MainLayout — backend-wired. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Ic, type IconName } from './icons';
-import { Avatar, Tip, useHover } from './ui';
+import { Avatar, Tip } from './ui';
 import { useApp } from './context';
-import { USERS, DMS, type Message } from './data';
+import { type Message } from './data';
+import * as api from './api';
 import { WorkspaceRail, Sidebar } from './Sidebar';
+import { DmConversation } from './People';
 
 /* ── TopBar ─────────────────────────────────────────────── */
 export function TopBar() {
-  const { activeChannel, activeDm, sideOpen, setSideOpen, theme, setTheme, showNotif, setShowNotif, setInCall, setCallType, setShowSettings, channels } = useApp();
+  const {
+    activeChannel, sideOpen, setSideOpen, theme, setTheme,
+    showNotif, setShowNotif, setShowSettings, channels, currentUser,
+    startChannelCall, unreadCount,
+  } = useApp();
   const ch = (channels || []).find((c) => c.id === activeChannel);
-  const dm = DMS.find((d) => d.id === activeDm);
-  const title = ch ? ch.name : dm ? USERS[dm.userId]?.name || dm.name : 'InterLynk';
-  const desc = ch ? ch.description : dm ? 'Direct Message' : '';
-  const isAnnouncment = ch?.type === 'announcement';
+  const title = ch ? ch.name : 'InterLynk';
+  const desc = ch ? ch.description : '';
+  const isAnnouncement = ch?.type === 'announcement';
 
   return (
     <div style={{ height: 'var(--topbar-h)', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', paddingLeft: 14, paddingRight: 14, gap: 8, flexShrink: 0, zIndex: 10 }}>
       <Tip label={sideOpen ? 'Hide sidebar' : 'Show sidebar'}>
         <button
           onClick={() => setSideOpen(!sideOpen)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 5, borderRadius: 6, display: 'flex', transition: 'color .14s' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--t1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 5, borderRadius: 6, display: 'flex' }}
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -35,11 +37,6 @@ export function TopBar() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         {ch && <span style={{ color: 'var(--t3)' }}>{ch.type === 'announcement' ? <Ic.Megaphone s={16} /> : ch.locked ? <Ic.Lock s={16} /> : <Ic.Hash s={16} />}</span>}
-        {dm && (
-          <div style={{ width: 22, height: 22, borderRadius: '50%', background: USERS[dm.userId]?.color || 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff' }}>
-            {(USERS[dm.userId]?.name || 'A')[0]}
-          </div>
-        )}
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{title}</span>
         {desc && (
           <>
@@ -51,35 +48,23 @@ export function TopBar() {
 
       <div style={{ flex: 1 }} />
 
-      <button
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t3)', fontSize: 12.5, cursor: 'pointer', transition: 'all .14s', minWidth: 180 }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--bd2)'; e.currentTarget.style.color = 'var(--t2)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--bd)'; e.currentTarget.style.color = 'var(--t3)'; }}
-      >
-        <Ic.Search s={13} />
-        <span>Search…</span>
-        <span style={{ marginLeft: 'auto', fontSize: 11, background: 'var(--bg-active)', padding: '1px 5px', borderRadius: 4, display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Ic.Cmd s={10} />K
-        </span>
-      </button>
-
       <div style={{ width: 1, height: 20, background: 'var(--bd)', margin: '0 2px' }} />
-      {((!isAnnouncment && activeChannel) || activeDm) && (
+      {!isAnnouncement && activeChannel && (
         <>
-          <Tip label={activeDm ? 'Voice Call' : 'Group Voice Call'}>
+          <Tip label="Group Voice Call">
             <button
-              onClick={() => { setCallType('voice'); setInCall(true); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', transition: 'color .14s' }}
+              onClick={() => startChannelCall('voice')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ok)')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
             >
               <Ic.Phone s={16} />
             </button>
           </Tip>
-          <Tip label={activeDm ? 'Video Call' : 'Group Video Call'}>
+          <Tip label="Group Video Call">
             <button
-              onClick={() => { setCallType('video'); setInCall(true); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', transition: 'color .14s' }}
+              onClick={() => startChannelCall('video')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
             >
@@ -93,9 +78,7 @@ export function TopBar() {
       <Tip label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', transition: 'color .14s' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--warn)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
         >
           {theme === 'dark' ? <Ic.Sun s={16} /> : <Ic.Moon s={16} />}
         </button>
@@ -105,23 +88,49 @@ export function TopBar() {
         <div style={{ position: 'relative', display: 'inline-flex' }}>
           <button
             onClick={() => setShowNotif(!showNotif)}
-            style={{ background: showNotif ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: showNotif ? 'var(--primary)' : 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', transition: 'all .14s' }}
-            onMouseEnter={(e) => { if (!showNotif) e.currentTarget.style.color = 'var(--t1)'; }}
-            onMouseLeave={(e) => { if (!showNotif) e.currentTarget.style.color = 'var(--t3)'; }}
+            style={{ background: showNotif ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: showNotif ? 'var(--primary)' : 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
           >
             <Ic.Bell s={16} />
           </button>
-          <div style={{ position: 'absolute', top: 3, right: 3, width: 8, height: 8, borderRadius: '50%', background: 'var(--err)', border: '2px solid var(--bg-sidebar)' }} />
+          {unreadCount > 0 && (
+            <div style={{ position: 'absolute', top: 3, right: 3, width: 8, height: 8, borderRadius: '50%', background: 'var(--err)', border: '2px solid var(--bg-sidebar)' }} />
+          )}
         </div>
       </Tip>
 
       <div
         onClick={() => setShowSettings(true)}
-        style={{ cursor: 'pointer', borderRadius: '50%', transition: 'opacity .14s' }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '.8')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+        style={{ cursor: 'pointer', borderRadius: '50%' }}
       >
-        <Avatar user={USERS.me} size={30} showStatus />
+        <Avatar user={currentUser || { name: '?' }} size={30} showStatus />
+      </div>
+
+      {showNotif && <NotificationsPopover />}
+    </div>
+  );
+}
+
+/* ── Notifications popover ───────────────────────────────── */
+function NotificationsPopover() {
+  const { notifications, markAllNotificationsRead, setShowNotif } = useApp();
+  return (
+    <div className="il-scale-in" style={{ position: 'absolute', top: 'calc(var(--topbar-h) - 4px)', right: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.5)', zIndex: 300 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--bd)' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Notifications</span>
+        <button onClick={() => { markAllNotificationsRead(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-link)', fontSize: 12, fontWeight: 600 }}>Mark all read</button>
+      </div>
+      {notifications.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>You're all caught up 🎉</div>
+      ) : (
+        notifications.map((n) => (
+          <div key={n.id} style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', background: n.isRead ? 'transparent' : 'var(--primary-dim)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>{n.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>{n.message}</div>
+          </div>
+        ))
+      )}
+      <div style={{ padding: 8, textAlign: 'center' }}>
+        <button onClick={() => setShowNotif(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', fontSize: 12 }}>Close</button>
       </div>
     </div>
   );
@@ -130,39 +139,15 @@ export function TopBar() {
 /* ── Message Item ────────────────────────────────────────── */
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '🤔', '😮', '✅', '🙌'];
 
-function MsgItem({
-  msg,
-  isFirst,
-  setMessages,
-  channelId,
-}: {
-  msg: Message;
-  isFirst: boolean;
-  setMessages: React.Dispatch<React.SetStateAction<Record<string, Message[]>>>;
-  channelId: string;
-}) {
+function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; channelId: string }) {
   const [showActions, setShowActions] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const { setThreadMsg } = useApp();
-  const user = msg.userId === 'me' ? USERS.me : USERS[msg.userId] || { name: msg.userId, color: '#8b5cf6', initials: '?' };
-  const isMe = msg.userId === 'me';
+  const { setThreadMsg, getUser, currentUser, reactToMessage, openProfile } = useApp();
+  const user = getUser(msg.userId);
+  const isMe = currentUser ? msg.userId === currentUser.id : false;
 
-  const addReaction = (emoji: string) => {
-    setMessages((prev) => {
-      const arr = [...(prev[channelId] || [])];
-      const idx = arr.findIndex((m) => m.id === msg.id);
-      if (idx === -1) return prev;
-      const m = { ...arr[idx] };
-      const reactions = [...(m.reactions || [])];
-      const ri = reactions.findIndex((r) => r.emoji === emoji);
-      if (ri > -1) {
-        reactions[ri] = { ...reactions[ri], count: reactions[ri].reacted ? reactions[ri].count - 1 : reactions[ri].count + 1, reacted: !reactions[ri].reacted };
-      } else {
-        reactions.push({ emoji, count: 1, reacted: true });
-      }
-      arr[idx] = { ...m, reactions };
-      return { ...prev, [channelId]: arr };
-    });
+  const react = (emoji: string) => {
+    reactToMessage(channelId, msg.id, emoji);
     setShowPicker(false);
   };
 
@@ -173,7 +158,7 @@ function MsgItem({
       style={{ display: 'flex', gap: 12, padding: `${isFirst ? '12px' : '2px'} 16px`, position: 'relative', borderRadius: 4, transition: 'background .12s', background: showActions ? 'var(--bg-hover)' : 'transparent' }}
     >
       {isFirst ? (
-        <div style={{ flexShrink: 0, marginTop: 1 }}><Avatar user={user} size={36} /></div>
+        <div style={{ flexShrink: 0, marginTop: 1, cursor: 'pointer' }} onClick={() => openProfile(user)}><Avatar user={user} size={36} /></div>
       ) : (
         <div style={{ width: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {showActions && <span style={{ fontSize: 10, color: 'var(--t3)' }}>{msg.time}</span>}
@@ -183,15 +168,11 @@ function MsgItem({
       <div style={{ flex: 1, minWidth: 0 }}>
         {isFirst && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
-            <span
-              style={{ fontWeight: 700, fontSize: 14.5, color: isMe ? 'var(--primary-l)' : 'var(--t1)', cursor: 'pointer' }}
-              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-            >
+            <span onClick={() => openProfile(user)} style={{ fontWeight: 700, fontSize: 14.5, color: isMe ? 'var(--primary-l)' : 'var(--t1)', cursor: 'pointer' }}>
               {user.name}
             </span>
-            {USERS[msg.userId]?.role === 'ADMIN' && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--primary-dim)', color: 'var(--primary)' }}>ADMIN</span>}
-            {USERS[msg.userId]?.role === 'MOD' && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--ok-dim)', color: 'var(--ok)' }}>MOD</span>}
+            {user.role === 'ADMIN' && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--primary-dim)', color: 'var(--primary)' }}>ADMIN</span>}
+            {user.role === 'MOD' && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--ok-dim)', color: 'var(--ok)' }}>MOD</span>}
             <span style={{ fontSize: 11.5, color: 'var(--t3)' }}>{msg.time}</span>
           </div>
         )}
@@ -199,7 +180,7 @@ function MsgItem({
         <div style={{ fontSize: 14.5, color: 'var(--t1)', lineHeight: 1.55, wordBreak: 'break-word', fontWeight: 400 }}>
           {msg.content.split(/(@\w+)/g).map((part, i) =>
             /^@\w+/.test(part) ? (
-              <span key={i} style={{ background: 'var(--primary-dim)', color: 'var(--primary-l)', borderRadius: 4, padding: '0 3px', fontWeight: 600, cursor: 'pointer' }}>{part}</span>
+              <span key={i} style={{ background: 'var(--primary-dim)', color: 'var(--primary-l)', borderRadius: 4, padding: '0 3px', fontWeight: 600 }}>{part}</span>
             ) : (
               part
             )
@@ -212,8 +193,8 @@ function MsgItem({
             {msg.reactions.filter((r) => r.count > 0).map((r) => (
               <button
                 key={r.emoji}
-                onClick={() => addReaction(r.emoji)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, border: `1.5px solid ${r.reacted ? 'var(--primary)' : 'var(--bd2)'}`, background: r.reacted ? 'var(--primary-dim)' : 'transparent', cursor: 'pointer', fontSize: 13, color: r.reacted ? 'var(--primary)' : 'var(--t2)', transition: 'all .12s', fontFamily: 'inherit' }}
+                onClick={() => react(r.emoji)}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, border: `1.5px solid ${r.reacted ? 'var(--primary)' : 'var(--bd2)'}`, background: r.reacted ? 'var(--primary-dim)' : 'transparent', cursor: 'pointer', fontSize: 13, color: r.reacted ? 'var(--primary)' : 'var(--t2)', fontFamily: 'inherit' }}
               >
                 <span>{r.emoji}</span>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>{r.count}</span>
@@ -221,8 +202,7 @@ function MsgItem({
             ))}
             <button
               onClick={() => setShowPicker(!showPicker)}
-              style={{ display: 'flex', alignItems: 'center', padding: '2px 7px', borderRadius: 20, border: '1.5px dashed var(--bd)', background: 'transparent', cursor: 'pointer', color: 'var(--t3)', fontSize: 13, transition: 'all .12s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--bd2)'; e.currentTarget.style.color = 'var(--t2)'; }}
+              style={{ display: 'flex', alignItems: 'center', padding: '2px 7px', borderRadius: 20, border: '1.5px dashed var(--bd)', background: 'transparent', cursor: 'pointer', color: 'var(--t3)', fontSize: 13 }}
             >
               <Ic.Smile s={13} />
             </button>
@@ -233,7 +213,6 @@ function MsgItem({
           <button
             onClick={() => setThreadMsg(msg)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-link)', fontSize: 12.5, fontWeight: 600, marginTop: 4, padding: '2px 0' }}
-            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
           >
             <Ic.Thread s={13} />
             {msg.replies} {msg.replies === 1 ? 'reply' : 'replies'}
@@ -246,24 +225,20 @@ function MsgItem({
           {EMOJIS.slice(0, 5).map((e) => (
             <button
               key={e}
-              onClick={() => addReaction(e)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, fontSize: 15, lineHeight: 1, transition: 'transform .1s' }}
-              onMouseEnter={(e2) => (e2.currentTarget.style.transform = 'scale(1.3)')}
-              onMouseLeave={(e2) => (e2.currentTarget.style.transform = 'scale(1)')}
+              onClick={() => react(e)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 4, fontSize: 15, lineHeight: 1 }}
             >
               {e}
             </button>
           ))}
           <div style={{ width: 1, height: 16, background: 'var(--bd)', margin: '0 2px' }} />
-          {([['Reply', 'Reply', () => {}], ['Thread', 'Thread', () => setThreadMsg(msg)], ['MoreH', 'More', () => {}]] as [IconName, string, () => void][]).map(([ico, label, fn]) => {
+          {([['Thread', 'Thread', () => setThreadMsg(msg)]] as [IconName, string, () => void][]).map(([ico, label, fn]) => {
             const IconCmp = Ic[ico];
             return (
               <Tip key={ico} label={label}>
                 <button
                   onClick={fn}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', padding: 5, borderRadius: 4, display: 'flex', transition: 'color .12s' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--t1)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t2)')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', padding: 5, borderRadius: 4, display: 'flex' }}
                 >
                   <IconCmp s={14} />
                 </button>
@@ -278,10 +253,8 @@ function MsgItem({
           {EMOJIS.map((e) => (
             <button
               key={e}
-              onClick={() => addReaction(e)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 4, fontSize: 18, lineHeight: 1, transition: 'transform .1s' }}
-              onMouseEnter={(e2) => (e2.currentTarget.style.transform = 'scale(1.25)')}
-              onMouseLeave={(e2) => (e2.currentTarget.style.transform = 'scale(1)')}
+              onClick={() => react(e)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 4, fontSize: 18, lineHeight: 1 }}
             >
               {e}
             </button>
@@ -295,23 +268,30 @@ function MsgItem({
 /* ── Message Input ───────────────────────────────────────── */
 function MessageInput({ channelId }: { channelId: string }) {
   const [text, setText] = useState('');
-  const [bold, setBold] = useState(false);
-  const [italic, setItalic] = useState(false);
-  const [code, setCode] = useState(false);
+  const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
-  const { addMessage, channels } = useApp();
+  const { sendMessage, channels, notifyTyping, typingByChannel, currentUser } = useApp();
   const ch = (channels || []).find((c) => c.id === channelId);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const send = (e?: { preventDefault: () => void }) => {
+  const typers = (typingByChannel[channelId] || []).filter((u) => u !== currentUser?.username);
+
+  const send = async (e?: { preventDefault: () => void }) => {
     e && e.preventDefault();
-    if (!text.trim()) return;
-    addMessage(channelId, text.trim());
+    if (!text.trim() || sending) return;
+    const content = text.trim();
     setText('');
-    setBold(false);
-    setItalic(false);
-    setCode(false);
-    setTimeout(() => ref.current?.focus(), 50);
+    setSending(true);
+    try {
+      await sendMessage(channelId, content);
+      notifyTyping(channelId, false);
+    } catch {
+      setText(content); // restore on failure
+    } finally {
+      setSending(false);
+      setTimeout(() => ref.current?.focus(), 30);
+    }
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -321,10 +301,11 @@ function MessageInput({ channelId }: { channelId: string }) {
     }
   };
 
-  const addEmoji = (em: string) => {
-    setText((t) => t + em);
-    setShowEmoji(false);
-    ref.current?.focus();
+  const onType = (v: string) => {
+    setText(v);
+    notifyTyping(channelId, true);
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => notifyTyping(channelId, false), 2500);
   };
 
   const placeholder = ch?.locked ? 'This channel is read-only' : `Message #${ch?.name || channelId}…`;
@@ -332,40 +313,31 @@ function MessageInput({ channelId }: { channelId: string }) {
   return (
     <div style={{ padding: '0 14px 14px', flexShrink: 0 }}>
       <div style={{ height: 18, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 4 }}>
-        <div style={{ display: 'flex', gap: 3 }}>
-          <span className="il-typing-dot" />
-          <span className="il-typing-dot" />
-          <span className="il-typing-dot" />
-        </div>
-        <span style={{ fontSize: 12, color: 'var(--t3)' }}>Carol is typing…</span>
+        {typers.length > 0 && (
+          <>
+            <div style={{ display: 'flex', gap: 3 }}>
+              <span className="il-typing-dot" />
+              <span className="il-typing-dot" />
+              <span className="il-typing-dot" />
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--t3)' }}>
+              {typers.length === 1 ? `${typers[0]} is typing…` : `${typers.length} people are typing…`}
+            </span>
+          </>
+        )}
       </div>
 
-      <div
-        style={{ background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', overflow: 'hidden', transition: 'border-color .14s' }}
-        onFocusCapture={(e) => (e.currentTarget.style.borderColor = 'var(--primary)')}
-        onBlurCapture={(e) => (e.currentTarget.style.borderColor = 'var(--bd)')}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '6px 8px', borderBottom: '1px solid var(--bd)' }}>
-          <button className={`il-fmt-btn${bold ? ' active' : ''}`} onClick={() => setBold(!bold)} style={{ fontWeight: 700 }}>B</button>
-          <button className={`il-fmt-btn${italic ? ' active' : ''}`} onClick={() => setItalic(!italic)} style={{ fontStyle: 'italic' }}>I</button>
-          <button className={`il-fmt-btn${code ? ' active' : ''}`} onClick={() => setCode(!code)} style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{'<>'}</button>
-          <div style={{ width: 1, height: 14, background: 'var(--bd)', margin: '0 3px' }} />
-          <button className="il-fmt-btn" title="Link"><Ic.At s={13} /></button>
-          <button className="il-fmt-btn" title="Attach"><Ic.Clip s={13} /></button>
-          <div style={{ flex: 1 }} />
-          <button className="il-fmt-btn" style={{ fontSize: 11, color: 'var(--t3)' }} title="Shift+Enter for newline">Shift↵ = newline</button>
-        </div>
-
+      <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 10px' }}>
           <textarea
             ref={ref}
             value={text}
-            onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'; }}
+            onChange={(e) => { onType(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'; }}
             onKeyDown={onKey}
             placeholder={placeholder}
-            disabled={ch?.locked}
+            disabled={ch?.locked || sending}
             rows={1}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 14.5, fontFamily: "'DM Sans',sans-serif", fontWeight: bold ? 700 : 400, fontStyle: italic ? 'italic' : 'normal', resize: 'none', minHeight: 22, maxHeight: 150, overflowY: 'auto', lineHeight: 1.55 }}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 14.5, fontFamily: "'DM Sans',sans-serif", resize: 'none', minHeight: 22, maxHeight: 150, overflowY: 'auto', lineHeight: 1.55 }}
           />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -373,8 +345,7 @@ function MessageInput({ channelId }: { channelId: string }) {
               <Tip label="Emoji">
                 <button
                   onClick={() => setShowEmoji(!showEmoji)}
-                  style={{ background: showEmoji ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: showEmoji ? 'var(--primary)' : 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', transition: 'all .14s' }}
-                  onMouseEnter={(e) => { if (!showEmoji) e.currentTarget.style.color = 'var(--t2)'; }}
+                  style={{ background: showEmoji ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: showEmoji ? 'var(--primary)' : 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
                 >
                   <Ic.Smile s={18} />
                 </button>
@@ -384,10 +355,8 @@ function MessageInput({ channelId }: { channelId: string }) {
                   {['😀', '😂', '🥰', '🤩', '😎', '🤔', '😮', '😢', '🎉', '🔥', '👍', '❤️', '✅', '🚀', '💯', '🙌', '⚡', '🎨', '💡', '🤯'].map((em) => (
                     <button
                       key={em}
-                      onClick={() => addEmoji(em)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 3, borderRadius: 4, lineHeight: 1, transition: 'transform .1s' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.3)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                      onClick={() => { setText((t) => t + em); setShowEmoji(false); ref.current?.focus(); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 3, borderRadius: 4, lineHeight: 1 }}
                     >
                       {em}
                     </button>
@@ -398,10 +367,10 @@ function MessageInput({ channelId }: { channelId: string }) {
 
             <button
               onClick={() => send()}
-              disabled={!text.trim() || ch?.locked}
-              style={{ width: 32, height: 32, borderRadius: 'var(--r)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', background: text.trim() ? 'var(--primary)' : 'var(--bg-active)', color: text.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s', transform: text.trim() ? 'scale(1)' : 'scale(.9)' }}
+              disabled={!text.trim() || ch?.locked || sending}
+              style={{ width: 32, height: 32, borderRadius: 'var(--r)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', background: text.trim() ? 'var(--primary)' : 'var(--bg-active)', color: text.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}
             >
-              <Ic.Send s={15} c="currentColor" />
+              {sending ? <Ic.Loader s={14} className="il-spin" /> : <Ic.Send s={15} c="currentColor" />}
             </button>
           </div>
         </div>
@@ -412,12 +381,12 @@ function MessageInput({ channelId }: { channelId: string }) {
 
 /* ── ChatPanel ───────────────────────────────────────────── */
 export function ChatPanel() {
-  const { activeChannel, activeDm, messages, setMessages, channels } = useApp();
+  const { activeChannel, messages, channels, messagesLoading } = useApp();
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showJumpDown, setShowJumpDown] = useState(false);
 
-  const channelId = activeDm || activeChannel;
+  const channelId = activeChannel;
   const msgList = (channelId && messages[channelId]) || [];
   const ch = (channels || []).find((c) => c.id === activeChannel);
 
@@ -456,7 +425,7 @@ export function ChatPanel() {
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 6 }}>Welcome to InterLynk</div>
-          <div style={{ fontSize: 14, color: 'var(--t3)', maxWidth: 340, lineHeight: 1.6 }}>Select a direct message to start chatting, or create a channel in the sidebar to collaborate with your team.</div>
+          <div style={{ fontSize: 14, color: 'var(--t3)', maxWidth: 340, lineHeight: 1.6 }}>Select a channel from the sidebar to start collaborating with your team.</div>
         </div>
       </div>
     );
@@ -464,19 +433,6 @@ export function ChatPanel() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {activeChannel === 'general' && (
-        <div style={{ padding: '6px 16px', background: 'var(--bg-hover)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--t2)', flexShrink: 0 }}>
-          <Ic.Pin s={13} c="var(--primary)" />
-          <span><span style={{ color: 'var(--primary)', fontWeight: 600 }}>Pinned:</span> @Alice pushed auth changes — PR is ready for review</span>
-          <button
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 4 }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--t1)')}
-          >
-            View all pins
-          </button>
-        </div>
-      )}
-
       <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '8px 0', position: 'relative' }}>
         <div style={{ padding: '20px 16px 8px', borderBottom: '1px solid var(--bd)', marginBottom: 8 }}>
           <div style={{ width: 56, height: 56, borderRadius: 'var(--r-xl)', background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
@@ -485,6 +441,12 @@ export function ChatPanel() {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 4 }}>Welcome to #{ch?.name || channelId}!</h2>
           <p style={{ fontSize: 14, color: 'var(--t2)', maxWidth: 480 }}>{ch?.description || 'This is the start of the channel.'}</p>
         </div>
+
+        {messagesLoading && msgList.length === 0 && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--t3)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Ic.Loader s={15} className="il-spin" /> Loading messages…
+          </div>
+        )}
 
         {grouped.map(({ msg, isFirst, showDate }) => (
           <div key={msg.id}>
@@ -495,11 +457,11 @@ export function ChatPanel() {
                 <div style={{ flex: 1, height: 1, background: 'var(--bd)' }} />
               </div>
             )}
-            <MsgItem msg={msg} isFirst={isFirst} setMessages={setMessages} channelId={channelId} />
+            <MsgItem msg={msg} isFirst={isFirst} channelId={channelId} />
           </div>
         ))}
 
-        {msgList.length === 0 && (
+        {!messagesLoading && msgList.length === 0 && (
           <div style={{ padding: '16px', textAlign: 'center', color: 'var(--t3)', fontSize: 14 }}>No messages yet. Say hello! 👋</div>
         )}
         <div ref={bottomRef} style={{ height: 8 }} />
@@ -522,16 +484,44 @@ export function ChatPanel() {
 
 /* ── Thread Panel ────────────────────────────────────────── */
 function ThreadPanel() {
-  const { threadMsg, setThreadMsg } = useApp();
+  const { threadMsg, setThreadMsg, getUser, registerUsers } = useApp();
   const [reply, setReply] = useState('');
+  const [replies, setReplies] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!threadMsg) return;
+    setLoading(true);
+    api
+      .fetchThread(threadMsg.id)
+      .then((t) => {
+        registerUsers(t.senders);
+        setReplies(t.replies);
+      })
+      .catch(() => setReplies([]))
+      .finally(() => setLoading(false));
+  }, [threadMsg, registerUsers]);
+
   if (!threadMsg) return null;
-  const user = threadMsg.userId === 'me' ? USERS.me : USERS[threadMsg.userId] || { name: 'User', color: '#8b5cf6' };
-  const sendReply = () => {
-    if (reply.trim()) {
-      setReply('');
-      setThreadMsg({ ...threadMsg, replies: (threadMsg.replies || 0) + 1 });
+  const user = getUser(threadMsg.userId);
+
+  const sendReply = async () => {
+    if (!reply.trim() || sending) return;
+    const content = reply.trim();
+    setReply('');
+    setSending(true);
+    try {
+      const { message, sender } = await api.sendThreadReply(threadMsg.id, content);
+      if (sender) registerUsers([sender]);
+      setReplies((p) => [...p, message]);
+    } catch {
+      setReply(content);
+    } finally {
+      setSending(false);
     }
   };
+
   return (
     <div className="il-slide-l" style={{ width: 'var(--right-w)', background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0 }}>
       <div style={{ padding: '0 14px', height: 'var(--topbar-h)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--bd)' }}>
@@ -539,8 +529,6 @@ function ThreadPanel() {
         <button
           onClick={() => setThreadMsg(null)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 5, borderRadius: 6, display: 'flex' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--t1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
         >
           <Ic.X s={16} />
         </button>
@@ -556,7 +544,24 @@ function ThreadPanel() {
           </div>
           <div style={{ fontSize: 14, color: 'var(--t1)', lineHeight: 1.5 }}>{threadMsg.content}</div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--t3)', textAlign: 'center', margin: '8px 0' }}>{threadMsg.replies || 0} replies</div>
+        <div style={{ fontSize: 12, color: 'var(--t3)', textAlign: 'center', margin: '8px 0' }}>
+          {loading ? 'Loading replies…' : `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}`}
+        </div>
+        {replies.map((m) => {
+          const ru = getUser(m.userId);
+          return (
+            <div key={m.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <Avatar user={ru} size={26} />
+              <div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                  <span style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--t1)' }}>{ru.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--t3)' }}>{m.time}</span>
+                </div>
+                <div style={{ fontSize: 13.5, color: 'var(--t1)', lineHeight: 1.5 }}>{m.content}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div style={{ padding: 10, borderTop: '1px solid var(--bd)' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
@@ -566,12 +571,11 @@ function ThreadPanel() {
             onKeyDown={(e) => { if (e.key === 'Enter') sendReply(); }}
             placeholder="Reply in thread…"
             style={{ flex: 1, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '8px 10px', fontSize: 13, color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
-            onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-            onBlur={(e) => (e.target.style.borderColor = 'var(--bd)')}
           />
           <button
             onClick={sendReply}
-            style={{ width: 32, height: 32, background: reply.trim() ? 'var(--primary)' : 'var(--bg-active)', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', color: reply.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}
+            disabled={sending}
+            style={{ width: 32, height: 32, background: reply.trim() ? 'var(--primary)' : 'var(--bg-active)', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', color: reply.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <Ic.Send s={14} />
           </button>
@@ -581,7 +585,6 @@ function ThreadPanel() {
   );
 }
 
-/* ── Right Sidebar ─────────────────────────────────────────── */
 export function RightSidebar() {
   const { threadMsg } = useApp();
   if (threadMsg) return <ThreadPanel />;
@@ -589,16 +592,23 @@ export function RightSidebar() {
 }
 
 export function MainLayout() {
+  const { activeDm } = useApp();
   return (
     <div style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden' }}>
       <WorkspaceRail />
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-main)' }}>
-        <TopBar />
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-          <ChatPanel />
-          <RightSidebar />
-        </div>
+        {activeDm ? (
+          <DmConversation />
+        ) : (
+          <>
+            <TopBar />
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+              <ChatPanel />
+              <RightSidebar />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

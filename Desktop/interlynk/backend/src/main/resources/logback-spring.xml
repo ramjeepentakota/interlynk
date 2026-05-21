@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="interlynk"/>
+    <springProperty scope="context" name="logFile"
+                    source="logging.file.name"
+                    defaultValue="./storage/logs/application.log"/>
+    <springProperty scope="context" name="logsPath"
+                    source="app.storage.logs-path"
+                    defaultValue="./storage/logs"/>
+
+    <!-- ─── Human-friendly console pattern (kept on for local DX) ───────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %X{traceId:-} %X{userId:-} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+        ─── Structured JSON file appender (for ELK / Loki / Datadog ingest) ───
+        Single-line JSON per event. Keys: ts, level, logger, thread, msg, traceId,
+        spanId, userId, requestId, exception. No external JSON-encoder dependency
+        is required — we build the JSON by hand in the pattern, escaping the
+        message and the (optional) stacktrace via the built-in %replace converter.
+    -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logFile}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logsPath}/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>{"ts":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}","level":"%level","logger":"%logger","thread":"%thread","app":"${appName}","traceId":"%X{traceId:-}","userId":"%X{userId:-}","requestId":"%X{requestId:-}","msg":"%replace(%msg){'\"','\\\\\"'}"%replace(%xEx){'\\n','\\\\n'}%n}%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Per-package tuning -->
+    <logger name="com.enterprise.collab" level="DEBUG"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="INFO"/>
+    <logger name="org.apache.tomcat" level="WARN"/>
+    <logger name="org.springframework.boot.actuate" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE_JSON"/>
+    </root>
+
+</configuration>

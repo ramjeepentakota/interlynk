@@ -29,7 +29,7 @@ public class AuditLog {
     @Column(name = "entity_id")
     private Long entityId;
     
-    @Column(columnDefinition = "JSON")
+    @Column(columnDefinition = "TEXT")
     private String details;
     
     @Column(name = "ip_address", length = 45)

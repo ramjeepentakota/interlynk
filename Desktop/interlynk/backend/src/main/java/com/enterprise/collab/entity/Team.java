@@ -3,8 +3,6 @@ package com.enterprise.collab.entity;
 import javax.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "teams")
@@ -27,30 +25,54 @@ public class Team {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
-    
-    @ManyToMany
-    @JoinTable(
-        name = "team_members",
-        joinColumns = @JoinColumn(name = "team_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
-    @Builder.Default
-    private Set<User> members = new HashSet<>();
-    
+
+    // Team membership is modeled exclusively by the TeamMember entity
+    // (which maps the team_members table with id / role_in_team / joined_at).
+    // A second @ManyToMany over the same table caused dual-ownership write
+    // conflicts on delete, so it has been removed.
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
+
+    // ── Lifecycle / governance ────────────────────────────
+    @Column(name = "archived", nullable = false)
+    @Builder.Default
+    private boolean archived = false;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    @Builder.Default
+    private Visibility visibility = Visibility.PRIVATE;
+
+    /** Template the team was provisioned from (e.g. "default", "engineering"). */
+    @Column(name = "template_name", length = 60)
+    private String templateName;
+
+    /** Optional governing messaging policy. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "messaging_policy_id")
+    private MessagingPolicy messagingPolicy;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
-    
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public enum Visibility {
+        PUBLIC,    // discoverable by all org members
+        PRIVATE,   // invite-only
+        ORG_WIDE   // every active member auto-joined
     }
 }

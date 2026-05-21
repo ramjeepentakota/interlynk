@@ -1,0 +1,13 @@
+{
+  "name": "Interlynk",
+  "short_name": "Interlynk",
+  "description": "Team communication and collaboration",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07080d",
+  "theme_color": "#07080d",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ]
+}

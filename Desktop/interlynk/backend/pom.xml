@@ -18,7 +18,10 @@
     <description>Enterprise internal communication and collaboration platform</description>
     
     <properties>
-        <java.version>1.8</java.version>
+        <!-- Code uses java.net.http.HttpClient and Java 9+ collection literals,
+             so the source/target floor is 11. Bumping past the previous 1.8
+             declaration which lied about the actual compile floor. -->
+        <java.version>11</java.version>
         <jjwt.version>0.11.5</jjwt.version>
     </properties>
     
@@ -118,6 +121,12 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- Mail (used by EmailService; SMTP host configured per environment) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         
         <dependency>

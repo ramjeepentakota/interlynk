@@ -1,0 +1,77 @@
+# ─── Build artifacts ─────────────────────────────────────────────────────────
+backend/target/
+backend/BOOT-INF/
+backend/META-INF/
+backend/org/
+backend/build.log
+backend/backend.log
+backend/app.log
+backend/build_error.txt
+backend/build_output.txt
+backend/log_output.txt
+backend/temp_log.txt
+backend/temp_log_tail.txt
+backend/storage/logs/
+backend/storage/temp/
+backend/storage/uploads/
+backend/storage/recordings/
+backend/storage/user-workspaces/
+backend/storage/repos/
+*.class
+*.jar
+*.war
+*.ear
+
+# ─── Frontend ───────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+frontend/.turbo/
+
+# ─── IDE / editor ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Logs ───────────────────────────────────────────────────────────────────
+*.log
+*.log.*.gz
+logs/
+
+# ─── Storage volumes ────────────────────────────────────────────────────────
+storage/logs/
+storage/temp/
+storage/uploads/
+storage/recordings/
+storage/user-workspaces/
+storage/repos/
+
+# ─── OS / temp ──────────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*~
+nul
+
+# ─── Local config / secrets ─────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.local.yml
+application-local.yml
+application-secrets.yml
+
+# ─── Maven wrapper download cache ───────────────────────────────────────────
+.mvn/wrapper/maven-wrapper.jar
+
+# ─── Stray QA scripts (now under /scripts/qa) ───────────────────────────────
+QA_TEST_REPORT_*.txt

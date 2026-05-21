@@ -38,6 +38,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final LoginHistoryService loginHistoryService;
+    private final AuditService auditService;
     
     @Value("${app.security.jwt.expiration}")
     private long jwtExpiration;
@@ -74,7 +76,9 @@ public class AuthService {
         // Generate tokens
         String accessToken = tokenProvider.generateToken(user.getUsername(), user.getId());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getUsername());
-        
+
+        auditService.record(user.getUsername(), "USER_REGISTERED", "User", user.getId());
+
         return buildAuthResponse(user, accessToken, refreshToken.getToken());
     }
     
@@ -92,17 +96,28 @@ public class AuthService {
             log.debug("Password matches encoder: {}", matches);
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
-        
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (RuntimeException ex) {
+            loginHistoryService.recordFailure(request.getUsername(), "Invalid credentials");
+            auditService.recordAnonymous("LOGIN_FAILED", "User", null,
+                    "username=" + request.getUsername() + " reason=" + ex.getClass().getSimpleName());
+            throw ex;
+        }
+
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", authentication.getName()));
-        
+
         // Check if user is active
         if (user.getStatus() != User.UserStatus.ACTIVE) {
+            loginHistoryService.recordFailure(user.getUsername(),
+                    "Account status: " + user.getStatus());
             throw new UnauthorizedException("Account is not active. Please contact administrator.");
         }
+        loginHistoryService.recordSuccess(user.getUsername());
         
         // Update presence to online
         user.setPresence(User.Presence.ONLINE);
@@ -125,7 +140,8 @@ public class AuthService {
         }
         
         log.info("User logged in: {} (rememberMe: {})", user.getUsername(), rememberMe);
-        
+        auditService.record(user.getUsername(), "LOGIN_SUCCESS", "User", user.getId());
+
         return buildAuthResponse(user, accessToken, refreshToken.getToken(), tokenExpiration);
     }
     
@@ -164,8 +180,9 @@ public class AuthService {
         
         // Revoke all refresh tokens
         refreshTokenService.revokeAllUserTokens(username);
-        
+
         log.info("User logged out: {}", username);
+        auditService.record(username, "LOGOUT", "User", user.getId());
     }
     
     public AuthDto.UserProfileDto getCurrentUser(String username) {
@@ -215,8 +232,9 @@ public class AuthService {
         
         // Revoke all refresh tokens (force re-login)
         refreshTokenService.revokeAllUserTokens(username);
-        
+
         log.info("User password changed: {}", username);
+        auditService.record(username, "PASSWORD_CHANGED", "User", user.getId());
     }
     
     public List<AuthDto.UserDto> searchUsers(String query) {

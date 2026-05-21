@@ -1,4 +1,6 @@
-/* InterLynk mock data + domain types — ported from il-base.jsx */
+/* InterLynk domain types + backend DTO mappers.
+   All mock/dummy data has been removed — every value here is derived
+   from live backend responses. */
 
 export interface User {
   id: string;
@@ -14,33 +16,40 @@ export interface User {
 export interface Channel {
   id: string;
   name: string;
-  type?: 'text' | 'announcement';
+  type?: 'text' | 'announcement' | 'voice';
   unread?: number;
   description?: string;
   locked?: boolean;
-}
-
-export interface VoiceChannel {
-  id: string;
-  name: string;
-  participants: string[];
-}
-
-export interface DM {
-  id: string;
-  userId: string;
-  name?: string;
-  lastMsg: string;
-  unread: number;
-  isBot?: boolean;
-  color?: string;
-  initials?: string;
+  memberCount?: number;
+  maxParticipants?: number;
 }
 
 export interface Reaction {
   emoji: string;
   count: number;
   reacted: boolean;
+}
+
+/** A direct-message conversation summary (one per other person). */
+export interface Conversation {
+  userId: string;
+  user: User;
+  lastMessage: string;
+  lastTime: string;
+  lastTimeRaw?: string;
+  unread: number;
+}
+
+/** A single direct (person-to-person) message. */
+export interface DirectMessageItem {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  time: string;
+  date: string;
+  isRead: boolean;
+  createdAt?: string;
 }
 
 export interface Message {
@@ -62,74 +71,165 @@ export const STATUS_COLORS: Record<string, string> = {
   offline: '#5a587c',
 };
 
-export const USERS: Record<string, User> = {
-  me: { id: 'me', name: 'Jordan Kim', username: 'jordankim', initials: 'JK', color: '#8b5cf6', status: 'online', role: 'ADMIN' },
-  alice: { id: 'alice', name: 'Alice Chen', username: 'alicechen', initials: 'AC', color: '#f43f5e', status: 'online', role: 'MEMBER' },
-  bob: { id: 'bob', name: 'Bob Martinez', username: 'bobm', initials: 'BM', color: '#f59e0b', status: 'away', role: 'MEMBER' },
-  carol: { id: 'carol', name: 'Carol Wu', username: 'carolwu', initials: 'CW', color: '#10b981', status: 'busy', role: 'MOD' },
-  david: { id: 'david', name: 'David Park', username: 'davidpark', initials: 'DP', color: '#ec4899', status: 'offline', role: 'MEMBER' },
-  emma: { id: 'emma', name: 'Emma Torres', username: 'emmat', initials: 'ET', color: '#a78bfa', status: 'online', role: 'MEMBER' },
-  james: { id: 'james', name: 'James Liu', username: 'jamesliu', initials: 'JL', color: '#84cc16', status: 'offline', role: 'MEMBER' },
-};
+/* ── Helpers ─────────────────────────────────────────────── */
 
-// No default channels — users create their own
-export const CHANNELS: Channel[] = [];
-
-export const VOICE_CHANNELS: VoiceChannel[] = [
-  { id: 'vc-standup', name: 'Team Standup', participants: ['alice', 'carol'] },
-  { id: 'vc-design', name: 'Design Review', participants: [] },
-  { id: 'vc-eng', name: 'Engineering', participants: ['bob'] },
-  { id: 'vc-lounge', name: 'Lounge', participants: [] },
+const AVATAR_COLORS = [
+  '#8b5cf6', '#f43f5e', '#f59e0b', '#10b981',
+  '#ec4899', '#a78bfa', '#84cc16', '#06b6d4',
+  '#f97316', '#3b82f6',
 ];
 
-export const DMS: DM[] = [
-  { id: 'dm-ai', userId: 'ai', name: 'InterLynk AI', lastMsg: 'How can I help you today?', unread: 0, isBot: true, color: 'var(--primary)', initials: 'AI' },
-  { id: 'dm-alice', userId: 'alice', lastMsg: "sounds good, I'll review it!", unread: 2 },
-  { id: 'dm-bob', userId: 'bob', lastMsg: "let's sync tomorrow ☕", unread: 0 },
-  { id: 'dm-carol', userId: 'carol', lastMsg: 'the new designs look 🔥', unread: 1 },
-];
+/** Deterministic accent colour from a stable id/username. */
+export function colorFor(seed: string | number | undefined): string {
+  const s = String(seed ?? '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
 
-export const MOCK_MESSAGES: Record<string, Message[]> = {
-  general: [
-    { id: 'g0', userId: 'alice', content: 'Hey team! Just pushed the new authentication changes. Can someone take a look at the PR?', time: '2:34 PM', date: 'Yesterday', reactions: [{ emoji: '👍', count: 2, reacted: false }] },
-    { id: 'g1', userId: 'bob', content: "I'll take a look! Give me 10 minutes ⚡", time: '2:36 PM', date: 'Yesterday' },
-    { id: 'g2', userId: 'alice', content: 'Thanks Bob! There are some tricky edge cases in the OAuth flow I want a second pair of eyes on', time: '2:37 PM', date: 'Yesterday', replies: 2 },
-    { id: 'g3', userId: 'carol', content: 'GM everyone 👋', time: '9:14 AM', date: 'Today' },
-    { id: 'g4', userId: 'alice', content: 'Morning Carol! Ready for standup?', time: '9:15 AM', date: 'Today' },
-    { id: 'g5', userId: 'bob', content: 'Morning! Just finishing my coffee ☕', time: '9:18 AM', date: 'Today', reactions: [{ emoji: '☕', count: 3, reacted: true }, { emoji: '😂', count: 1, reacted: false }] },
-    { id: 'g6', userId: 'carol', content: "I'm already in the voice channel if anyone wants to join", time: '9:20 AM', date: 'Today' },
-    { id: 'g7', userId: 'me', content: 'On my way! Just finishing a quick PR review', time: '9:21 AM', date: 'Today' },
-    { id: 'g8', userId: 'alice', content: 'No worries, the standup today should be short — mostly design review items and the new onboarding flow', time: '9:22 AM', date: 'Today' },
-    { id: 'g9', userId: 'emma', content: 'Quick update: I pushed the new component library to Figma. Would love feedback on the card styles before we implement ✨', time: '10:05 AM', date: 'Today', reactions: [{ emoji: '🎉', count: 4, reacted: false }] },
-    { id: 'g10', userId: 'me', content: "@Alice I reviewed your PR. The OAuth flow looks clean. Left two minor comments but overall it's ready to merge 🙌", time: '10:47 AM', date: 'Today', replies: 3 },
-    { id: 'g11', userId: 'alice', content: 'Thanks Jordan! Addressing the comments now and will merge after CI passes', time: '10:49 AM', date: 'Today', reactions: [{ emoji: '🚀', count: 2, reacted: false }] },
-  ],
-  engineering: [
-    { id: 'e0', userId: 'bob', content: 'Heads up: deploying the new WebSocket handler to staging in ~30 min. Hold off on pushes until I confirm 🚦', time: '10:02 AM', date: 'Today' },
-    { id: 'e1', userId: 'david', content: "ACK, I'll hold my branch until you give the all-clear", time: '10:04 AM', date: 'Today' },
-    { id: 'e2', userId: 'bob', content: 'Deployment done ✅  All services green, staging looks healthy', time: '10:38 AM', date: 'Today', reactions: [{ emoji: '✅', count: 3, reacted: true }] },
-    { id: 'e3', userId: 'david', content: 'Nice. Pushing now 🚀', time: '10:41 AM', date: 'Today' },
-    { id: 'e4', userId: 'james', content: 'Anyone seen the latency spike on the /api/messages endpoint? P99 is around 340ms which seems high', time: '11:20 AM', date: 'Today' },
-    { id: 'e5', userId: 'bob', content: "Yeah I saw that — think it's the N+1 query issue. I have a fix in draft", time: '11:23 AM', date: 'Today', replies: 5 },
-  ],
-  design: [
-    { id: 'd0', userId: 'emma', content: 'New component library designs are up in Figma! Would love feedback on the card styles and the updated button hierarchy 🎨', time: '11:30 AM', date: 'Today' },
-    { id: 'd1', userId: 'carol', content: 'These cards look really polished Emma, great work 🔥  The new violet accent fits perfectly', time: '11:45 AM', date: 'Today', reactions: [{ emoji: '❤️', count: 2, reacted: false }] },
-    { id: 'd2', userId: 'alice', content: 'Love the direction! One suggestion: maybe increase the border-radius on the primary cards to 14px for that extra premium feel?', time: '12:01 PM', date: 'Today' },
-    { id: 'd3', userId: 'emma', content: "Good call! I'll update and share a revised version this afternoon", time: '12:04 PM', date: 'Today' },
-  ],
-  random: [
-    { id: 'r0', userId: 'bob', content: "Does anyone else find it physically impossible to name variables? I've been staring at this function for 20 minutes 😅", time: '3:15 PM', date: 'Yesterday', reactions: [{ emoji: '😂', count: 5, reacted: false }] },
-    { id: 'r1', userId: 'carol', content: 'Naming things and cache invalidation. The two hard problems', time: '3:17 PM', date: 'Yesterday', reactions: [{ emoji: '💯', count: 4, reacted: true }] },
-    { id: 'r2', userId: 'david', content: "What's everyone having for lunch? Trying to decide between the Thai place or the new ramen spot", time: '12:30 PM', date: 'Today' },
-    { id: 'r3', userId: 'alice', content: 'Ramen 100% — that place has incredible tonkotsu 🍜', time: '12:32 PM', date: 'Today' },
-    { id: 'r4', userId: 'me', content: "Hard agree, I was there yesterday. Get the spicy miso if you haven't tried it", time: '12:34 PM', date: 'Today' },
-  ],
-  'dm-alice': [
-    { id: 'da0', userId: 'alice', content: 'Hey Jordan! Quick question — can you review the access control changes in the PR before EOD?', time: '10:15 AM', date: 'Today' },
-    { id: 'da1', userId: 'me', content: 'Sure! On it now, should have feedback in ~30 min', time: '10:18 AM', date: 'Today' },
-    { id: 'da2', userId: 'alice', content: 'No rush! The changes look straightforward but wanted a second pair of eyes', time: '10:19 AM', date: 'Today' },
-    { id: 'da3', userId: 'me', content: 'All good — left a couple comments but mostly looks great. Ship it 🚀', time: '10:52 AM', date: 'Today' },
-    { id: 'da4', userId: 'alice', content: "sounds good, I'll review it!", time: '11:00 AM', date: 'Today' },
-  ],
-};
+export function initialsFor(name: string | undefined): string {
+  return (name || '?')
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function presenceToStatus(p?: string): User['status'] {
+  switch ((p || '').toUpperCase()) {
+    case 'ONLINE': return 'online';
+    case 'AWAY': return 'away';
+    case 'BUSY': return 'busy';
+    case 'DO_NOT_DISTURB':
+    case 'DND': return 'dnd';
+    default: return 'offline';
+  }
+}
+
+function roleToBadge(roles?: string[] | string): User['role'] {
+  const list = Array.isArray(roles) ? roles : roles ? [roles] : [];
+  const upper = list.map((r) => r.toUpperCase());
+  if (upper.includes('ADMIN')) return 'ADMIN';
+  if (upper.includes('MANAGER') || upper.includes('MODERATOR') || upper.includes('MOD')) return 'MOD';
+  return 'MEMBER';
+}
+
+/** Maps a backend UserDto / UserProfileDto / sender object to the UI User. */
+export function mapUser(dto: any): User {
+  if (!dto) return { id: 'unknown', name: 'Unknown' };
+  const id = String(dto.id ?? dto.userId ?? dto.username ?? 'unknown');
+  const name = dto.displayName || dto.username || dto.name || 'Unknown';
+  return {
+    id,
+    name,
+    username: dto.username,
+    initials: initialsFor(name),
+    color: colorFor(id),
+    status: presenceToStatus(dto.presence || dto.status),
+    role: roleToBadge(dto.roles ?? dto.role),
+    avatar: dto.avatarUrl || dto.avatar || undefined,
+  };
+}
+
+function channelKind(type?: string): Channel['type'] {
+  const t = (type || '').toUpperCase();
+  if (t === 'ANNOUNCEMENT') return 'announcement';
+  if (t === 'VOICE') return 'voice';
+  return 'text';
+}
+
+/** Maps a backend ChannelListResponse / ChannelResponse to the UI Channel. */
+export function mapChannel(dto: any): Channel {
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    type: channelKind(dto.type),
+    description: dto.description || '',
+    locked: Boolean(dto.isLocked),
+    unread: dto.unreadCount ?? 0,
+    memberCount: dto.memberCount ?? 0,
+    maxParticipants: dto.maxParticipants ?? undefined,
+  };
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Backend sends LocalDateTime without zone; treat as UTC ISO. */
+function parseDate(raw?: string): Date | null {
+  if (!raw) return null;
+  const iso = raw.endsWith('Z') || /[+-]\d\d:?\d\d$/.test(raw) ? raw : `${raw}Z`;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function formatTime(raw?: string): string {
+  const d = parseDate(raw);
+  if (!d) return '';
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${pad(m)} ${ampm}`;
+}
+
+export function formatDateLabel(raw?: string): string {
+  const d = parseDate(raw);
+  if (!d) return '';
+  const now = new Date();
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dayMs = 86400000;
+  const diff = Math.round((startOf(now) - startOf(d)) / dayMs);
+  if (diff <= 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** Maps a backend ChatDto.MessageResponse to the UI Message. */
+export function mapMessage(dto: any): Message {
+  const reactions: Reaction[] = (dto.reactions || []).map((r: any) => ({
+    emoji: r.emoji,
+    count: r.count ?? (r.users ? r.users.length : 0),
+    reacted: Boolean(r.reactedByCurrentUser),
+  }));
+  return {
+    id: String(dto.id),
+    userId: String(dto.senderId ?? dto.sender?.id ?? 'unknown'),
+    content: dto.content ?? '',
+    time: formatTime(dto.createdAt),
+    date: formatDateLabel(dto.createdAt),
+    reactions,
+    replies: dto.replyCount ?? 0,
+    isEdited: Boolean(dto.isEdited),
+  };
+}
+
+/** Maps a backend ChatDto.ConversationResponse to the UI Conversation. */
+export function mapConversation(dto: any): Conversation {
+  const user = mapUser(dto.otherUser);
+  return {
+    userId: user.id,
+    user,
+    lastMessage: dto.lastMessageContent ?? '',
+    lastTime: formatTime(dto.lastMessageTime),
+    lastTimeRaw: dto.lastMessageTime,
+    unread: dto.unreadCount ?? 0,
+  };
+}
+
+/** Maps a backend ChatDto.DirectMessageResponse to the UI DirectMessageItem. */
+export function mapDirectMessage(dto: any): DirectMessageItem {
+  return {
+    id: String(dto.id),
+    senderId: String(dto.sender?.id ?? dto.senderId ?? 'unknown'),
+    recipientId: String(dto.recipient?.id ?? dto.recipientId ?? 'unknown'),
+    content: dto.content ?? '',
+    time: formatTime(dto.createdAt),
+    date: formatDateLabel(dto.createdAt),
+    isRead: Boolean(dto.isRead),
+    createdAt: dto.createdAt,
+  };
+}

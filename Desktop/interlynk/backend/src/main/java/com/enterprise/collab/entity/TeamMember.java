@@ -38,6 +38,6 @@ public class TeamMember {
     }
     
     public enum TeamRole {
-        LEAD, MEMBER
+        OWNER, LEAD, MEMBER, GUEST
     }
 }

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/tmp/**)",
+      "Bash(curl -s --max-time 8 -w \"\\\\n[HTTP %{http_code}]\\\\n\" -X POST http://localhost:8082/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin@123\"}')",
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://192.168.1.232:5173/api/calls/rooms\" --max-time 8)",
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://localhost:5173/\" --max-time 8)"
+    ]
+  }
+}

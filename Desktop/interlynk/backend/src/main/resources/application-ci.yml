@@ -1,0 +1,20 @@
+# CI overrides — loaded when SPRING_PROFILES_ACTIVE=ci.
+# Keeps the test environment quiet: no scheduled sweepers, lower log volume.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop      # tests start from a clean schema
+  sql:
+    init:
+      mode: never
+
+app:
+  retention:
+    enabled: false               # don't run sweeper during tests
+  email:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.enterprise.collab: INFO

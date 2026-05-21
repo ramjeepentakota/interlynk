@@ -38,6 +38,9 @@ public class ChatService {
     private final CallParticipantRepository callParticipantRepository;
     private final AttachmentRepository attachmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AuditService auditService;
+    private final MentionService mentionService;
+    private final WebhookService webhookService;
     
     @Value("${app.storage.uploads-path:${app.storage.base-path:/opt/company-platform}/uploads}")
     private String uploadsPath;
@@ -92,12 +95,14 @@ public class ChatService {
         }
         
         channel = channelRepository.save(channel);
-        
+
         log.info("Channel created: {} by {}", name, username);
-        
+        auditService.record(username, "CHANNEL_CREATED", "Channel", channel.getId(), "name=" + name);
+        webhookService.emit("channel.created", mapToChannelResponse(channel));
+
         // Broadcast channel creation
         messagingTemplate.convertAndSend("/topic/channels", mapToChannelListResponse(channel));
-        
+
         return mapToChannelResponse(channel);
     }
     
@@ -214,8 +219,9 @@ public class ChatService {
         }
         
         channelRepository.delete(channel);
-        
+
         log.info("Channel {} deleted by {}", channelId, username);
+        auditService.record(username, "CHANNEL_DELETED", "Channel", channelId);
         
         // Broadcast channel deletion
         Map<String, Object> deleteMap = new HashMap<>();
@@ -224,12 +230,13 @@ public class ChatService {
         messagingTemplate.convertAndSend("/topic/channels", deleteMap);
     }
     
+    @Transactional(readOnly = true)
     public List<ChatDto.ChannelListResponse> getUserChannels(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
+
         List<Channel> channels;
-        
+
         // Admin users see all active channels, regular users only see their member channels
         // FIX: Use findChannelsForUser with userId for consistent DB-level security
         // Previously used findByMembersContaining which had issues with many-to-many relationships
@@ -238,12 +245,13 @@ public class ChatService {
         } else {
             channels = channelRepository.findChannelsForUser(user.getId());
         }
-        
+
         return channels.stream()
                 .map(this::mapToChannelListResponse)
                 .collect(Collectors.toList());
     }
-    
+
+    @Transactional(readOnly = true)
     public ChatDto.ChannelResponse getChannel(Long channelId, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
@@ -361,6 +369,7 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
     
+    @Transactional(readOnly = true)
     public List<ChatDto.ChannelListResponse> getTextChannelsByTeam(Long teamId) {
         teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Team", "id", teamId));
@@ -372,6 +381,7 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
     
+    @Transactional(readOnly = true)
     public List<ChatDto.ChannelListResponse> getVoiceChannelsByTeam(Long teamId) {
         teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Team", "id", teamId));
@@ -425,8 +435,8 @@ public class ChatService {
             }
         }
         
-        // Check if user is a member
-        if (!channel.getMembers().contains(user)) {
+        // Check if user is a member (admins may always join)
+        if (!channel.getMembers().contains(user) && !user.hasRole("ADMIN")) {
             throw new ForbiddenException("You are not a member of this channel");
         }
         
@@ -514,6 +524,7 @@ public class ChatService {
         }
     }
     
+    @Transactional(readOnly = true)
     public CallDto.CallRoomResponse getVoiceChannelStatus(Long channelId) {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new ResourceNotFoundException("Channel", "id", channelId));
@@ -664,12 +675,19 @@ public class ChatService {
         // Broadcast AFTER attachments are persisted so the mapped response includes them
         ChatDto.MessageResponse response = mapToMessageResponse(message);
         messagingTemplate.convertAndSend("/topic/channel/" + channelId, response);
-        
+
+        // Fan out @mentions as personal notifications (async, never blocks send).
+        mentionService.notifyMentions(message);
+
+        // Outbound webhook event (no-op if no subscribers).
+        webhookService.emit("message.created", response);
+
         log.debug("Message sent to channel {} by {}", channelId, username);
-        
+
         return response;
     }
     
+    @Transactional(readOnly = true)
     public ChatDto.MessageListResponse getChannelMessages(Long channelId, String username, int page, int size) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
@@ -735,10 +753,15 @@ public class ChatService {
         // Broadcast to channel topic
         ChatDto.MessageResponse response = mapToMessageResponse(reply);
         messagingTemplate.convertAndSend("/topic/channel/" + parentMessage.getChannel().getId(), response);
-        
+
+        // Thread replies also fan-out @mentions, and notify the parent author.
+        mentionService.notifyMentions(reply);
+        mentionService.notifyThreadReply(reply);
+
         return response;
     }
     
+    @Transactional(readOnly = true)
     public ChatDto.ThreadResponse getThread(Long messageId, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
@@ -909,8 +932,9 @@ public class ChatService {
         
         // Delete the message from database
         messageRepository.delete(message);
-        
+
         log.info("Message {} permanently deleted from channel {} by {}", messageId, channelId, username);
+        auditService.record(username, "MESSAGE_DELETED", "Message", messageId, "channel=" + channelId);
         
         // Broadcast deletion to all connected clients
         Map<String, Object> deleteMap = new java.util.HashMap<>();

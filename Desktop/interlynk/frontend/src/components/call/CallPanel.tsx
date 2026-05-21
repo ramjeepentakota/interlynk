@@ -520,8 +520,8 @@ function VideoGrid({
 }: {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
-  localVideoRef: React.RefObject<HTMLVideoElement>;
-  remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  localVideoRef: React.RefObject<HTMLVideoElement | null>;
+  remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
   participants: Participant[];
   currentUser: any;
   isVideoOn: boolean;

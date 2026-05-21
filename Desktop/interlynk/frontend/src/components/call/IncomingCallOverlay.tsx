@@ -30,26 +30,29 @@ export function IncomingCallOverlay() {
     if (!incomingCall || isAccepting) return;
     setIsAccepting(true);
     try {
-      // Notify caller that we accepted
-      const stompClient = (window as any).__stompClient;
-      if (stompClient?.connected && user) {
-        stompClient.publish({
-          destination: '/app/call/signal',
-          body: JSON.stringify({
-            type: 'call-accepted',
-            roomId: Number(incomingCall.roomId),
-            senderUserId: Number(user.id),
-            targetUserId: Number(incomingCall.callerUserId),
-            callType: incomingCall.callType
-          }),
-        });
-      }
-
       await callApi.joinCall(String(incomingCall.roomId));
       const roomResponse = await callApi.getCall(String(incomingCall.roomId));
       setCurrentCall(roomResponse.data);
       setInCall(true);
       clearIncomingCall();
+
+      // Notify the caller we accepted AFTER the CallPanel is mounted so the
+      // resulting WebRTC offer has a listener on this client.
+      const stompClient = (window as any).__stompClient;
+      if (stompClient?.connected && user) {
+        setTimeout(() => {
+          stompClient.publish({
+            destination: '/app/call/signal',
+            body: JSON.stringify({
+              type: 'call-accepted',
+              roomId: Number(incomingCall.roomId),
+              senderUserId: Number(user.id),
+              targetUserId: Number(incomingCall.callerUserId),
+              callType: incomingCall.callType,
+            }),
+          });
+        }, 50);
+      }
     } catch (err) {
       console.error('Failed to accept call:', err);
     } finally {

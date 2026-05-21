@@ -14,127 +14,157 @@ import {
   Search,
   Settings,
   GitBranch,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Tooltip, ScrollArea } from '@/components/ui';
+import {
+  useWorkspaceFiles,
+  useWorkspaceFile,
+  useSaveWorkspaceFile,
+  languageForPath,
+  type FileTreeItem,
+} from '@/api/codeWorkspace';
+import { codeExecutionApi } from '@/api/client';
 
-// Types
-interface FileTreeItem {
-  id: string;
+interface CodeEditorProps {
+  /** Workspace to attach to. When null, renders an empty state. */
+  workspaceId?: number | string | null;
+}
+
+interface OpenFile {
+  path: string;
   name: string;
-  type: 'file' | 'folder';
-  children?: FileTreeItem[];
-  language?: string;
+  language: string;
 }
 
-// Mock file tree
-const mockFileTree: FileTreeItem[] = [
-  {
-    id: '1',
-    name: 'src',
-    type: 'folder',
-    children: [
-      { id: '2', name: 'components', type: 'folder', children: [
-        { id: '3', name: 'App.tsx', type: 'file', language: 'typescriptreact' },
-        { id: '4', name: 'index.tsx', type: 'file', language: 'typescriptreact' },
-        { id: '5', name: 'Button.tsx', type: 'file', language: 'typescript' },
-      ]},
-      { id: '6', name: 'styles', type: 'folder', children: [
-        { id: '7', name: 'main.css', type: 'file', language: 'css' },
-      ]},
-      { id: '8', name: 'utils.ts', type: 'file', language: 'typescript' },
-      { id: '9', name: 'types.ts', type: 'file', language: 'typescript' },
-    ],
-  },
-  { id: '10', name: 'package.json', type: 'file', language: 'json' },
-  { id: '11', name: 'tsconfig.json', type: 'file', language: 'json' },
-  { id: '12', name: 'README.md', type: 'file', language: 'markdown' },
-];
+export function CodeEditor({ workspaceId = null }: CodeEditorProps) {
+  const filesQuery = useWorkspaceFiles(workspaceId);
+  const saveFile = useSaveWorkspaceFile(workspaceId);
 
-const mockCode = `// Welcome to Interlynk Code Editor
-import React from 'react';
-
-interface ButtonProps {
-  variant?: 'primary' | 'secondary';
-  children: React.ReactNode;
-  onClick?: () => void;
-}
-
-export function Button({ variant = 'primary', children, onClick }: ButtonProps) {
-  return (
-    <button
-      className={\`btn btn-\${variant}\`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-export default Button;
-`;
-
-export function CodeEditor() {
-  const [openFiles, setOpenFiles] = React.useState([
-    { id: '3', name: 'App.tsx', language: 'typescriptreact' },
-  ]);
-  const [activeFile, setActiveFile] = React.useState('3');
-  const [code, setCode] = React.useState(mockCode);
-  const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set(['1']));
+  const [openFiles, setOpenFiles] = React.useState<OpenFile[]>([]);
+  const [activePath, setActivePath] = React.useState<string | null>(null);
+  const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set());
   const [showTerminal, setShowTerminal] = React.useState(false);
   const [terminalOutput, setTerminalOutput] = React.useState<string[]>([
     '> Code execution ready',
-    '> Running build...',
-    '✓ Build completed in 2.3s',
   ]);
+
+  const activeFileContent = useWorkspaceFile(workspaceId, activePath);
+  const [draft, setDraft] = React.useState<string>('');
+  const [dirty, setDirty] = React.useState(false);
+
+  // When the server delivers fresh file content, replace the editor's draft —
+  // but only if the user hasn't started editing it locally yet.
+  React.useEffect(() => {
+    if (!activeFileContent.data) return;
+    if (dirty) return;
+    setDraft(activeFileContent.data.content ?? '');
+  }, [activeFileContent.data, dirty]);
+
+  React.useEffect(() => {
+    setDirty(false);
+  }, [activePath]);
 
   const toggleFolder = (id: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const openFile = (file: { id: string; name: string; language: string }) => {
-    if (!openFiles.find((f) => f.id === file.id)) {
-      setOpenFiles([...openFiles, file]);
-    }
-    setActiveFile(file.id);
+  const openFile = React.useCallback((file: { path: string; name: string; language: string }) => {
+    setOpenFiles((curr) =>
+      curr.some((f) => f.path === file.path) ? curr : [...curr, file],
+    );
+    setActivePath(file.path);
+  }, []);
+
+  const closeFile = (path: string) => {
+    setOpenFiles((curr) => {
+      const next = curr.filter((f) => f.path !== path);
+      if (activePath === path && next.length > 0) setActivePath(next[next.length - 1].path);
+      else if (next.length === 0) setActivePath(null);
+      return next;
+    });
   };
 
-  const closeFile = (fileId: string) => {
-    const newFiles = openFiles.filter((f) => f.id !== fileId);
-    setOpenFiles(newFiles);
-    if (activeFile === fileId && newFiles.length > 0) {
-      setActiveFile(newFiles[newFiles.length - 1].id);
+  const onSave = async () => {
+    if (!activePath || !workspaceId) return;
+    try {
+      await saveFile.mutateAsync({ filePath: activePath, content: draft });
+      setDirty(false);
+      setTerminalOutput((prev) => [...prev, `✓ saved ${activePath}`]);
+      setShowTerminal(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'save failed';
+      setTerminalOutput((prev) => [...prev, `✗ save failed: ${msg}`]);
+      setShowTerminal(true);
     }
   };
 
-  const runCode = () => {
+  const onRun = async () => {
+    if (!activePath) return;
     setShowTerminal(true);
-    setTerminalOutput((prev) => [
-      ...prev,
-      '> Running code...',
-      '> Executing test...',
-      '✓ All tests passed',
-    ]);
+    setTerminalOutput((prev) => [...prev, `> running ${activePath}`]);
+    try {
+      const language = openFiles.find((f) => f.path === activePath)?.language ?? 'plaintext';
+      const { data } = await codeExecutionApi.executeCode(draft, language);
+      // Backend returns CodeExecution shape: { output, error, stdout, stderr }
+      type ExecResult = { output?: string; error?: string; stdout?: string; stderr?: string };
+      const res = (data ?? {}) as ExecResult;
+      const out = res.output ?? res.stdout ?? '';
+      const err = res.error ?? res.stderr ?? '';
+      if (out) setTerminalOutput((prev) => [...prev, ...out.split('\n')]);
+      if (err) setTerminalOutput((prev) => [...prev, ...err.split('\n').map((l) => `! ${l}`)]);
+      setTerminalOutput((prev) => [...prev, '✓ execution finished']);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'execution failed';
+      setTerminalOutput((prev) => [...prev, `✗ ${msg}`]);
+    }
   };
+
+  const activeLanguage = openFiles.find((f) => f.path === activePath)?.language ?? 'plaintext';
+
+  // Keyboard shortcut: Ctrl/Cmd+S → save.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        onSave();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath, draft]);
 
   return (
     <div className="flex flex-col h-full bg-background-primary">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface-elevated">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" leftIcon={<Play className="w-4 h-4" />} onClick={runCode}>
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Play className="w-4 h-4" />}
+            onClick={onRun}
+            disabled={!activePath}
+          >
             Run
           </Button>
-          <Button variant="ghost" size="sm" leftIcon={<Save className="w-4 h-4" />}>
-            Save
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={
+              saveFile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />
+            }
+            onClick={onSave}
+            disabled={!activePath || !dirty || saveFile.isPending}
+          >
+            {dirty ? 'Save*' : 'Save'}
           </Button>
           <div className="h-4 w-px bg-border mx-2" />
           <Tooltip content="Git">
@@ -164,7 +194,9 @@ export function CodeEditor() {
         {/* File Explorer */}
         <div className="w-60 border-r border-border flex flex-col bg-background-secondary">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Explorer</span>
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              Explorer
+            </span>
             <div className="flex gap-1">
               <Tooltip content="New File">
                 <Button variant="ghost" size="icon" className="w-6 h-6">
@@ -180,17 +212,31 @@ export function CodeEditor() {
           </div>
           <ScrollArea className="flex-1">
             <div className="p-2">
-              {mockFileTree.map((item) => (
-                <FileTreeItem
-                  key={item.id}
-                  item={item}
-                  depth={0}
-                  expandedFolders={expandedFolders}
-                  onToggle={toggleFolder}
-                  onOpen={openFile}
-                  activeFile={activeFile}
-                />
-              ))}
+              {workspaceId == null ? (
+                <div className="text-xs text-text-muted p-3">
+                  No workspace selected. Open or create one to load files.
+                </div>
+              ) : filesQuery.isLoading ? (
+                <div className="text-xs text-text-muted p-3 flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" /> loading…
+                </div>
+              ) : filesQuery.isError ? (
+                <div className="text-xs text-error p-3">Could not load files.</div>
+              ) : (filesQuery.data ?? []).length === 0 ? (
+                <div className="text-xs text-text-muted p-3">This workspace has no files yet.</div>
+              ) : (
+                (filesQuery.data ?? []).map((item) => (
+                  <FileTreeRow
+                    key={item.id}
+                    item={item}
+                    depth={0}
+                    expandedFolders={expandedFolders}
+                    onToggle={toggleFolder}
+                    onOpen={openFile}
+                    activePath={activePath}
+                  />
+                ))
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -201,21 +247,22 @@ export function CodeEditor() {
           <div className="flex items-center border-b border-border bg-surface-elevated overflow-x-auto">
             {openFiles.map((file) => (
               <div
-                key={file.id}
+                key={file.path}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 text-sm border-r border-border cursor-pointer transition-colors',
-                  activeFile === file.id
+                  activePath === file.path
                     ? 'bg-background-primary text-text-primary'
-                    : 'text-text-secondary hover:bg-background-hover'
+                    : 'text-text-secondary hover:bg-background-hover',
                 )}
-                onClick={() => setActiveFile(file.id)}
+                onClick={() => setActivePath(file.path)}
+                title={file.path}
               >
                 <File className="w-4 h-4" />
                 <span>{file.name}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    closeFile(file.id);
+                    closeFile(file.path);
                   }}
                   className="p-0.5 hover:bg-background-hover rounded"
                 >
@@ -227,27 +274,38 @@ export function CodeEditor() {
 
           {/* Monaco Editor */}
           <div className="flex-1">
-            <Editor
-              height="100%"
-              defaultLanguage="typescript"
-              language={openFiles.find((f) => f.id === activeFile)?.language || 'typescript'}
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: true },
-                fontSize: 14,
-                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                padding: { top: 16 },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                wordWrap: 'on',
-                lineNumbers: 'on',
-                renderWhitespace: 'selection',
-                bracketPairColorization: { enabled: true },
-              }}
-            />
+            {activePath ? (
+              <Editor
+                height="100%"
+                defaultLanguage="typescript"
+                language={activeLanguage}
+                value={draft}
+                onChange={(value) => {
+                  setDraft(value || '');
+                  setDirty(true);
+                }}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: true },
+                  fontSize: 14,
+                  fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                  padding: { top: 16 },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  wordWrap: 'on',
+                  lineNumbers: 'on',
+                  renderWhitespace: 'selection',
+                  bracketPairColorization: { enabled: true },
+                }}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-text-muted text-sm">
+                {workspaceId == null
+                  ? 'Open a workspace to start editing.'
+                  : 'Select a file from the Explorer.'}
+              </div>
+            )}
           </div>
 
           {/* Terminal Panel */}
@@ -258,7 +316,12 @@ export function CodeEditor() {
                   <Terminal className="w-4 h-4 text-text-secondary" />
                   <span className="text-sm font-medium text-text-primary">Terminal</span>
                 </div>
-                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setShowTerminal(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-6 h-6"
+                  onClick={() => setShowTerminal(false)}
+                >
                   <X className="w-3 h-3" />
                 </Button>
               </div>
@@ -279,16 +342,16 @@ export function CodeEditor() {
   );
 }
 
-interface FileTreeItemProps {
+interface FileTreeRowProps {
   item: FileTreeItem;
   depth: number;
   expandedFolders: Set<string>;
   onToggle: (id: string) => void;
-  onOpen: (file: { id: string; name: string; language: string }) => void;
-  activeFile: string;
+  onOpen: (file: { path: string; name: string; language: string }) => void;
+  activePath: string | null;
 }
 
-function FileTreeItem({ item, depth, expandedFolders, onToggle, onOpen, activeFile }: FileTreeItemProps) {
+function FileTreeRow({ item, depth, expandedFolders, onToggle, onOpen, activePath }: FileTreeRowProps) {
   const isExpanded = expandedFolders.has(item.id);
   const isFile = item.type === 'file';
 
@@ -297,43 +360,43 @@ function FileTreeItem({ item, depth, expandedFolders, onToggle, onOpen, activeFi
       <button
         onClick={() => {
           if (isFile) {
-            onOpen({ id: item.id, name: item.name, language: item.language || 'plaintext' });
+            onOpen({
+              path: item.path,
+              name: item.name,
+              language: item.language ?? languageForPath(item.name),
+            });
           } else {
             onToggle(item.id);
           }
         }}
         className={cn(
           'w-full flex items-center gap-1 px-2 py-1 text-sm rounded hover:bg-background-hover transition-colors',
-          isFile && activeFile === item.id && 'bg-primary/10 text-primary',
-          !isFile || activeFile !== item.id && 'text-text-secondary hover:text-text-primary'
+          isFile && activePath === item.path && 'bg-primary/10 text-primary',
+          (!isFile || activePath !== item.path) && 'text-text-secondary hover:text-text-primary',
         )}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
-        {!isFile && (
-          isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />
-        )}
+        {!isFile && (isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)}
         {isFile ? (
           <File className="w-4 h-4" />
+        ) : isExpanded ? (
+          <FolderOpen className="w-4 h-4 text-warning" />
         ) : (
-          isExpanded ? (
-            <FolderOpen className="w-4 h-4 text-warning" />
-          ) : (
-            <Folder className="w-4 h-4 text-warning" />
-          )
+          <Folder className="w-4 h-4 text-warning" />
         )}
         <span className="truncate">{item.name}</span>
       </button>
       {!isFile && isExpanded && item.children && (
         <div>
           {item.children.map((child) => (
-            <FileTreeItem
+            <FileTreeRow
               key={child.id}
               item={child}
               depth={depth + 1}
               expandedFolders={expandedFolders}
               onToggle={onToggle}
               onOpen={onOpen}
-              activeFile={activeFile}
+              activePath={activePath}
             />
           ))}
         </div>
