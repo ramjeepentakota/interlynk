@@ -103,11 +103,6 @@ export async function deleteChannel(channelId: string): Promise<void> {
   await channelApi.deleteChannel(channelId);
 }
 
-export async function createVoiceChannel(name: string): Promise<Channel> {
-  const res = await channelApi.createChannel({ name, type: 'VOICE', description: '' });
-  return mapChannel(res.data);
-}
-
 export async function inviteToChannel(channelId: string, username: string): Promise<void> {
   await channelApi.addMember(channelId, username);
 }
@@ -263,12 +258,12 @@ export async function startDirectCall(
 
 export async function createGroupCall(
   name: string,
-  callType: 'voice' | 'video'
+  _callType: 'voice' | 'video'
 ): Promise<CallSession> {
-  const res = await callApi.createCall({
-    name,
-    type: callType === 'video' ? 'GROUP' : 'VOICE_CHANNEL',
-  });
+  // Both audio-only and video group calls live in the GROUP room type now —
+  // the previous VOICE_CHANNEL room type was the backing for the removed
+  // ambient voice-channel feature and is no longer used.
+  const res = await callApi.createCall({ name, type: 'GROUP' });
   return { roomId: res.data.id, targetUserId: null };
 }
 
@@ -287,49 +282,6 @@ export async function leaveCall(roomId: number): Promise<void> {
 export async function fetchCallParticipants(roomId: number): Promise<User[]> {
   const res = await callApi.getParticipants(String(roomId));
   return (res.data || []).map((p: any) => mapUser(p.user || p));
-}
-
-/* ── Voice Channels (persistent VOICE-type channels) ─────── */
-
-export interface VoiceRoomStatus {
-  /** The active call-room id backing this voice channel (also the LiveKit room). */
-  roomId: number | null;
-  participants: User[];
-}
-
-/** Join a voice channel; returns the backing call-room id + current roster. */
-export async function joinVoiceChannel(
-  channelId: string
-): Promise<VoiceRoomStatus> {
-  const res = await channelApi.joinVoiceChannel(channelId);
-  return {
-    roomId: res.data?.id ?? null,
-    participants: (res.data?.participants || []).map((p: any) => mapUser(p)),
-  };
-}
-
-export async function leaveVoiceChannel(channelId: string): Promise<void> {
-  try {
-    await channelApi.leaveVoiceChannel(channelId);
-  } catch {
-    /* best-effort */
-  }
-}
-
-/** Current participants in a voice channel (empty when nobody is connected). */
-export async function fetchVoiceChannelStatus(
-  channelId: string
-): Promise<VoiceRoomStatus> {
-  try {
-    const res = await channelApi.getVoiceChannelStatus(channelId);
-    if (!res.data) return { roomId: null, participants: [] };
-    return {
-      roomId: res.data.id ?? null,
-      participants: (res.data.participants || []).map((p: any) => mapUser(p)),
-    };
-  } catch {
-    return { roomId: null, participants: [] };
-  }
 }
 
 /* ── Direct Messages (person-to-person inbox) ────────────── */

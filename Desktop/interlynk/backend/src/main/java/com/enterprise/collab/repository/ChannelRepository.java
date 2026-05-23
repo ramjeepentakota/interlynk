@@ -30,9 +30,6 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
     @Query("SELECT c FROM Channel c WHERE c.team.id = :teamId AND c.type = 'TEXT' AND c.isActive = true ORDER BY c.position ASC")
     List<Channel> findTextChannelsByTeamId(@Param("teamId") Long teamId);
     
-    @Query("SELECT c FROM Channel c WHERE c.team.id = :teamId AND c.type = 'VOICE' AND c.isActive = true ORDER BY c.position ASC")
-    List<Channel> findVoiceChannelsByTeamId(@Param("teamId") Long teamId);
-    
     @Query("SELECT c FROM Channel c WHERE c.isActive = true ORDER BY c.category ASC, c.position ASC")
     List<Channel> findAllActiveChannels();
     

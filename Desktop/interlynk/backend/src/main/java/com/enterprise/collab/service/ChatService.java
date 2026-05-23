@@ -1,6 +1,5 @@
 package com.enterprise.collab.service;
 
-import com.enterprise.collab.dto.CallDto;
 import com.enterprise.collab.dto.ChatDto;
 import com.enterprise.collab.entity.*;
 import com.enterprise.collab.exception.BadRequestException;
@@ -34,8 +33,9 @@ public class ChatService {
     private final ReactionRepository reactionRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    // Kept so deleteChannel can mark a legacy linked voice-room inactive — but
+    // no new voice rooms are ever created from this service.
     private final CallRoomRepository callRoomRepository;
-    private final CallParticipantRepository callParticipantRepository;
     private final AttachmentRepository attachmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final AuditService auditService;
@@ -48,8 +48,16 @@ public class ChatService {
     // ============ Channel CRUD Operations ============
     
     @Transactional
-    public ChatDto.ChannelResponse createChannel(String name, String description, 
+    public ChatDto.ChannelResponse createChannel(String name, String description,
             Channel.ChannelType type, Long teamId, String username) {
+        // Voice CHANNELS were removed; anything that arrives as VOICE here is
+        // coerced into a regular TEXT channel so the create still succeeds
+        // rather than throwing — keeps older clients alive without re-enabling
+        // the feature.
+        if (type == Channel.ChannelType.VOICE) {
+            type = Channel.ChannelType.TEXT;
+        }
+
         User creator = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
@@ -381,160 +389,8 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
     
-    @Transactional(readOnly = true)
-    public List<ChatDto.ChannelListResponse> getVoiceChannelsByTeam(Long teamId) {
-        teamRepository.findById(teamId)
-                .orElseThrow(() -> new ResourceNotFoundException("Team", "id", teamId));
-        
-        List<Channel> channels = channelRepository.findVoiceChannelsByTeamId(teamId);
-        
-        return channels.stream()
-                .map(this::mapToChannelListResponse)
-                .collect(Collectors.toList());
-    }
-    
     public List<String> getAllCategories() {
         return channelRepository.findAllCategories();
-    }
-    
-    // ============ Voice Channel Operations ============
-    
-    @Transactional
-    public CallDto.CallRoomResponse joinVoiceChannel(Long channelId, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Channel", "id", channelId));
-        
-        // Verify this is a voice channel
-        if (channel.getType() != Channel.ChannelType.VOICE) {
-            throw new BadRequestException("This is not a voice channel");
-        }
-        
-        // Check if channel is active
-        if (channel.getIsActive() == null || !channel.getIsActive()) {
-            throw new BadRequestException("This channel is no longer active");
-        }
-        
-        // Check if channel is locked
-        if (channel.getIsLocked() != null && channel.getIsLocked()) {
-            throw new ForbiddenException("This voice channel is locked");
-        }
-        
-        // Check max participants
-        if (channel.getMaxParticipants() != null) {
-            CallRoom existingRoom = channel.getVoiceRoom();
-            if (existingRoom != null && existingRoom.getIsActive()) {
-                long currentParticipants = existingRoom.getParticipants().stream()
-                        .filter(p -> p.getLeftAt() == null)
-                        .count();
-                if (currentParticipants >= channel.getMaxParticipants()) {
-                    throw new BadRequestException("Voice channel is full");
-                }
-            }
-        }
-        
-        // Check if user is a member (admins may always join)
-        if (!channel.getMembers().contains(user) && !user.hasRole("ADMIN")) {
-            throw new ForbiddenException("You are not a member of this channel");
-        }
-        
-        // Get or create voice room
-        CallRoom voiceRoom = channel.getVoiceRoom();
-        if (voiceRoom == null || !voiceRoom.getIsActive()) {
-            voiceRoom = CallRoom.builder()
-                    .name("Voice: " + channel.getName())
-                    .type(CallRoom.CallRoomType.VOICE_CHANNEL)
-                    .createdBy(user)
-                    .isActive(true)
-                    .build();
-            voiceRoom = callRoomRepository.save(voiceRoom);
-            
-            // Link voice room to channel
-            channel.setVoiceRoom(voiceRoom);
-            channelRepository.save(channel);
-        }
-        
-        // Add participant to voice room
-        CallParticipant participant = CallParticipant.builder()
-                .callRoom(voiceRoom)
-                .user(user)
-                .joinedAt(LocalDateTime.now())
-                .isMuted(false)
-                .isVideoEnabled(true)
-                .isScreenSharing(false)
-                .build();
-        callParticipantRepository.save(participant);
-        
-        log.info("User {} joined voice channel {}", username, channelId);
-        
-        // Broadcast voice channel join
-        Map<String, Object> voiceJoinMap = new HashMap<>();
-        voiceJoinMap.put("type", "voice_join");
-        voiceJoinMap.put("userId", user.getId());
-        voiceJoinMap.put("username", username);
-        messagingTemplate.convertAndSend("/topic/channel/" + channelId, voiceJoinMap);
-        
-        return mapToCallRoomResponse(voiceRoom);
-    }
-    
-    @Transactional
-    public void leaveVoiceChannel(Long channelId, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Channel", "id", channelId));
-        
-        CallRoom voiceRoom = channel.getVoiceRoom();
-        if (voiceRoom == null || !voiceRoom.getIsActive()) {
-            throw new BadRequestException("No active voice session in this channel");
-        }
-        
-        // Find and remove participant
-        CallParticipant participant = callParticipantRepository
-                .findByCallRoomIdAndUserId(voiceRoom.getId(), user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("You are not in this voice channel"));
-        
-        participant.setLeftAt(LocalDateTime.now());
-        callParticipantRepository.save(participant);
-        
-        log.info("User {} left voice channel {}", username, channelId);
-        
-        // Broadcast voice channel leave
-        Map<String, Object> voiceLeaveMap = new HashMap<>();
-        voiceLeaveMap.put("type", "voice_leave");
-        voiceLeaveMap.put("userId", user.getId());
-        voiceLeaveMap.put("username", username);
-        messagingTemplate.convertAndSend("/topic/channel/" + channelId, voiceLeaveMap);
-        
-        // Check if room is empty, if so end the call
-        List<CallParticipant> activeParticipants = callParticipantRepository
-                .findByCallRoomIdAndLeftAtIsNull(voiceRoom.getId());
-        
-        if (activeParticipants.isEmpty()) {
-            voiceRoom.setIsActive(false);
-            voiceRoom.setEndedAt(LocalDateTime.now());
-            callRoomRepository.save(voiceRoom);
-            
-            Map<String, Object> voiceEndedMap = new HashMap<>();
-            voiceEndedMap.put("type", "voice_ended");
-            messagingTemplate.convertAndSend("/topic/channel/" + channelId, voiceEndedMap);
-        }
-    }
-    
-    @Transactional(readOnly = true)
-    public CallDto.CallRoomResponse getVoiceChannelStatus(Long channelId) {
-        Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Channel", "id", channelId));
-        
-        CallRoom voiceRoom = channel.getVoiceRoom();
-        if (voiceRoom == null) {
-            return null;
-        }
-        
-        return mapToCallRoomResponse(voiceRoom);
     }
     
     // ============ Channel Member Operations ============
@@ -568,12 +424,16 @@ public class ChatService {
         
         log.info("User {} added to channel {} by {}", targetUsername, channel.getName(), requestingUsername);
         
-        // Notify the user and channel
+        // Notify the user (privately) and the channel. Use Spring user destinations
+        // (convertAndSendToUser → /user/queue/...) so only the invited user's own
+        // authenticated session receives this — a public /topic/user/{username}
+        // would let any client subscribe to another user's channel events.
         Map<String, Object> addMemberMap = new HashMap<>();
         addMemberMap.put("type", "added_to_channel");
         addMemberMap.put("channelId", channelId);
         addMemberMap.put("channelName", channel.getName());
-        messagingTemplate.convertAndSend("/topic/user/" + targetUsername, addMemberMap);
+        addMemberMap.put("channelType", channel.getType() != null ? channel.getType().name() : null);
+        messagingTemplate.convertAndSendToUser(targetUsername, "/queue/channel-events", addMemberMap);
         
         Map<String, Object> memberAddedMap = new HashMap<>();
         memberAddedMap.put("type", "member_added");
@@ -613,12 +473,12 @@ public class ChatService {
         
         log.info("User {} removed from channel {} by {}", targetUsername, channel.getName(), requestingUsername);
         
-        // Notify the user and channel
+        // Notify the user (privately, via user destination) and the channel.
         Map<String, Object> removeMemberMap = new HashMap<>();
         removeMemberMap.put("type", "removed_from_channel");
         removeMemberMap.put("channelId", channelId);
         removeMemberMap.put("channelName", channel.getName());
-        messagingTemplate.convertAndSend("/topic/user/" + targetUsername, removeMemberMap);
+        messagingTemplate.convertAndSendToUser(targetUsername, "/queue/channel-events", removeMemberMap);
         
         Map<String, Object> memberRemovedMap = new HashMap<>();
         memberRemovedMap.put("type", "member_removed");
@@ -1129,38 +989,4 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
     
-    private CallDto.CallRoomResponse mapToCallRoomResponse(CallRoom room) {
-        List<CallParticipant> participants = callParticipantRepository
-                .findByCallRoomIdAndLeftAtIsNull(room.getId());
-        
-        return CallDto.CallRoomResponse.builder()
-                .id(room.getId())
-                .name(room.getName())
-                .type(room.getType().name())
-                .status(room.getIsActive() ? "ACTIVE" : "ENDED")
-                .createdByUsername(room.getCreatedBy() != null ? room.getCreatedBy().getUsername() : null)
-                .createdAt(room.getCreatedAt())
-                .startedAt(room.getStartedAt())
-                .endedAt(room.getEndedAt())
-                .participants(participants.stream()
-                        .map(this::mapToParticipantResponse)
-                        .collect(Collectors.toList()))
-                .participantCount(participants.size())
-                .build();
-    }
-    
-    private CallDto.ParticipantResponse mapToParticipantResponse(CallParticipant participant) {
-        return CallDto.ParticipantResponse.builder()
-                .id(participant.getId())
-                .userId(participant.getUser().getId())
-                .username(participant.getUser().getUsername())
-                .displayName(participant.getUser().getDisplayName())
-                .avatarUrl(participant.getUser().getAvatarUrl())
-                .isMuted(participant.getIsMuted())
-                .isVideoEnabled(participant.getIsVideoEnabled())
-                .isScreenSharing(participant.getIsScreenSharing())
-                .joinedAt(participant.getJoinedAt())
-                .leftAt(participant.getLeftAt())
-                .build();
-    }
 }

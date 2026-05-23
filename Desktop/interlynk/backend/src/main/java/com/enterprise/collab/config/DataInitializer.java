@@ -31,7 +31,6 @@ public class DataInitializer implements CommandLineRunner {
     private final ChannelRepository channelRepository;
     private final LicenseKeyRepository licenseKeyRepository;
     private final SystemSettingRepository systemSettingRepository;
-    private final CallRoomRepository callRoomRepository;
     private final PasswordEncoder passwordEncoder;
 
     @PersistenceContext
@@ -49,7 +48,6 @@ public class DataInitializer implements CommandLineRunner {
         initializeRoles();
         initializeDemoUser();
         initializeAdminUser();
-        initializeDefaultVoiceChannels();
         // No default chats: never seed text channels and remove any
         // previously seeded "general"/"random"/"announcements".
         cleanupDefaultTextChannels();
@@ -170,35 +168,6 @@ public class DataInitializer implements CommandLineRunner {
             }
             userRepository.save(jayUser);
             log.info("Jay user created: username=jay, email=jay@interlynk.com, password=Test@1234");
-        }
-    }
-
-    private void initializeDefaultVoiceChannels() {
-        if (callRoomRepository.count() == 0) {
-            log.info("Initializing default voice channels...");
-
-            CallRoom generalVoice = CallRoom.builder()
-                    .name("General Voice")
-                    .type(CallRoom.CallRoomType.VOICE_CHANNEL)
-                    .isActive(true)
-                    .build();
-            callRoomRepository.save(generalVoice);
-
-            CallRoom loungeVoice = CallRoom.builder()
-                    .name("Lounge")
-                    .type(CallRoom.CallRoomType.VOICE_CHANNEL)
-                    .isActive(true)
-                    .build();
-            callRoomRepository.save(loungeVoice);
-
-            CallRoom meetingRoom = CallRoom.builder()
-                    .name("Meeting Room")
-                    .type(CallRoom.CallRoomType.GROUP)
-                    .isActive(true)
-                    .build();
-            callRoomRepository.save(meetingRoom);
-
-            log.info("Default voice channels created: General Voice, Lounge, Meeting Room");
         }
     }
 

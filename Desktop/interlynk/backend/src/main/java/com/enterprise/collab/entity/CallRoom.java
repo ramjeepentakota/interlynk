@@ -9,13 +9,19 @@ import java.util.Set;
 @Entity
 @Table(name = "call_rooms")
 @Data
+// equals/hashCode on id ONLY. The default @Data would hash every field,
+// including the bidirectional `participants` set, which recurses into
+// CallParticipant.hashCode → CallRoom.hashCode → … → StackOverflowError when
+// the set is initialised (e.g. a 2nd person joining a voice channel).
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class CallRoom {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
     
     @Column(length = 100)
@@ -28,6 +34,7 @@ public class CallRoom {
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "created_by")
+    @ToString.Exclude
     private User createdBy;
 
     
@@ -46,6 +53,7 @@ public class CallRoom {
     
     @OneToMany(mappedBy = "callRoom", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
     private Set<CallParticipant> participants = new HashSet<>();
     
     @PrePersist

@@ -101,6 +101,25 @@ function subscribeGlobals() {
     })
   );
 
+  // Private per-user channel events (invited to / removed from a channel,
+  // including voice). Delivered via Spring user destinations
+  // (convertAndSendToUser → /user/queue/...), so only this authenticated session
+  // receives them — same private-delivery guarantee as DMs and call signaling.
+  // Without this the invitee would not see a newly-granted channel until reload.
+  liveSubs.push(
+    client.subscribe('/user/queue/channel-events', (msg) => {
+      try {
+        const body = JSON.parse(msg.body);
+        const channelId = body.channelId != null ? String(body.channelId) : null;
+        if (body.type === 'added_to_channel') {
+          emit('il-channel-added', { channelId, channelName: body.channelName, channelType: body.channelType });
+        } else if (body.type === 'removed_from_channel') {
+          emit('il-channel-removed', { channelId, channelName: body.channelName });
+        }
+      } catch { /* noop */ }
+    })
+  );
+
   // Person-to-person direct messages delivered to this user's private queue.
   liveSubs.push(
     client.subscribe('/user/queue/dm', (msg) => {
@@ -147,15 +166,6 @@ function openChannelSubscription(channelId: number) {
         const body = JSON.parse(frame.body);
         if (body.type === 'message_deleted') {
           emit('il-message-deleted', { channelId, messageId: String(body.messageId) });
-          return;
-        }
-        if (body.type === 'voice_join' || body.type === 'voice_leave' || body.type === 'voice_ended') {
-          emit('il-voice', {
-            channelId: String(channelId),
-            kind: body.type,
-            userId: body.userId != null ? String(body.userId) : null,
-            username: body.username,
-          });
           return;
         }
         if (body.id !== undefined && body.content !== undefined) {

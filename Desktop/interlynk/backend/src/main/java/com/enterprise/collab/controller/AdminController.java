@@ -298,69 +298,6 @@ public class AdminController {
         return ResponseEntity.ok(msgMap);
     }
     
-    // ============ Voice Channel Access Management ============
-    
-    @GetMapping("/voice-channels")
-    public ResponseEntity<List<Map<String, Object>>> getVoiceChannels() {
-        List<Channel> channels = channelRepository.findAll();
-        List<Map<String, Object>> voiceChannels = new ArrayList<>();
-        
-        for (Channel channel : channels) {
-            if (channel.getType() == Channel.ChannelType.VOICE) {
-                Map<String, Object> channelMap = new HashMap<>();
-                channelMap.put("id", channel.getId());
-                channelMap.put("name", channel.getName());
-                channelMap.put("description", channel.getDescription());
-                channelMap.put("isActive", channel.getIsActive());
-                channelMap.put("isLocked", channel.getIsLocked());
-                channelMap.put("maxParticipants", channel.getMaxParticipants());
-                channelMap.put("memberCount", channel.getMembers() != null ? channel.getMembers().size() : 0);
-                
-                if (channel.getMembers() != null) {
-                    List<Map<String, Object>> members = new ArrayList<>();
-                    for (User member : channel.getMembers()) {
-                        Map<String, Object> memberMap = new HashMap<>();
-                        memberMap.put("id", member.getId());
-                        memberMap.put("username", member.getUsername());
-                        memberMap.put("displayName", member.getDisplayName());
-                        memberMap.put("presence", member.getPresence().name());
-                        members.add(memberMap);
-                    }
-                    channelMap.put("members", members);
-                }
-                
-                voiceChannels.add(channelMap);
-            }
-        }
-        
-        return ResponseEntity.ok(voiceChannels);
-    }
-    
-    @PutMapping("/voice-channels/{channelId}/settings")
-    public ResponseEntity<Map<String, Object>> updateVoiceChannelSettings(
-            @PathVariable Long channelId,
-            @RequestBody Map<String, Object> payload) {
-        
-        Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new RuntimeException("Voice channel not found"));
-        
-        if (payload.get("maxParticipants") != null) {
-            channel.setMaxParticipants((Integer) payload.get("maxParticipants"));
-        }
-        if (payload.get("isLocked") != null) {
-            channel.setIsLocked((Boolean) payload.get("isLocked"));
-        }
-        if (payload.get("isActive") != null) {
-            channel.setIsActive((Boolean) payload.get("isActive"));
-        }
-        
-        channelRepository.save(channel);
-        
-        Map<String, Object> msgMap = new HashMap<>();
-        msgMap.put("message", "Voice channel settings updated successfully");
-        return ResponseEntity.ok(msgMap);
-    }
-    
     // ============ System Settings Management ============
     
     @GetMapping("/settings")

@@ -1,4 +1,6 @@
-/* InterLynk root app — fully wired to the backend. */
+/* InterLynk root app — fully wired to the backend.
+   Voice CHANNELS (Discord-style ambient voice rooms) have been removed.
+   1-on-1 voice / video calling remains the only realtime-media surface. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './theme.css';
 import {
@@ -75,9 +77,6 @@ export default function InterLynkApp() {
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Voice channels
-  const [voiceParticipants, setVoiceParticipants] = useState<Record<string, User[]>>({});
-
   const [inCall, setInCall] = useState(false);
   const [callSession, setCallSession] = useState<CallSession | null>(null);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
@@ -89,8 +88,6 @@ export default function InterLynkApp() {
   activeDmRef.current = activeDm;
   const currentUserRef = useRef<User | null>(null);
   currentUserRef.current = currentUser;
-
-  const voiceChannels = useMemo(() => channels.filter((c) => c.type === 'voice'), [channels]);
 
   /* ── Theme attrs ──────────────────────────────────────── */
   useEffect(() => {
@@ -231,24 +228,11 @@ export default function InterLynkApp() {
   const closeProfile = useCallback(() => setProfileUser(null), []);
 
   /* ── Channels ─────────────────────────────────────────── */
-  const refreshVoiceParticipants = useCallback(async (channelId: string) => {
-    try {
-      const status = await api.fetchVoiceChannelStatus(channelId);
-      setVoiceParticipants((p) => ({ ...p, [channelId]: status.participants }));
-    } catch {
-      /* non-fatal */
-    }
-  }, []);
-
   const reloadChannels = useCallback(async () => {
     const list = await api.fetchChannels();
     setChannels(list);
     list.forEach((c) => subscribeToChannel(Number(c.id)));
-    // Prime the voice-channel rosters so the sidebar shows who's connected.
-    list
-      .filter((c) => c.type === 'voice')
-      .forEach((c) => refreshVoiceParticipants(c.id));
-  }, [refreshVoiceParticipants]);
+  }, []);
 
   const loadMessages = useCallback(
     async (channelId: string) => {
@@ -424,9 +408,15 @@ export default function InterLynkApp() {
       reloadConversations();
       refreshDmUnread();
     };
-    const onVoice = (e: Event) => {
+    // Invited/added to a channel elsewhere — pull the new roster so it appears
+    // in the sidebar live, ready to open.
+    const onChannelAdded = () => { reloadChannels(); };
+    // Removed from a channel — drop it from the sidebar; if it was open, close it.
+    const onChannelRemoved = (e: Event) => {
       const { channelId } = (e as CustomEvent).detail;
-      if (channelId) refreshVoiceParticipants(String(channelId));
+      const removedId = channelId ? String(channelId) : null;
+      if (removedId && activeChannelRef.current === removedId) selectChannel(null);
+      reloadChannels();
     };
 
     window.addEventListener('il-message', onMessage);
@@ -436,7 +426,8 @@ export default function InterLynkApp() {
     window.addEventListener('il-incoming-call', onIncoming);
     window.addEventListener('il-notification', onNotif);
     window.addEventListener('il-dm', onDm);
-    window.addEventListener('il-voice', onVoice);
+    window.addEventListener('il-channel-added', onChannelAdded);
+    window.addEventListener('il-channel-removed', onChannelRemoved);
     return () => {
       window.removeEventListener('il-message', onMessage);
       window.removeEventListener('il-message-deleted', onDeleted);
@@ -445,9 +436,10 @@ export default function InterLynkApp() {
       window.removeEventListener('il-incoming-call', onIncoming);
       window.removeEventListener('il-notification', onNotif);
       window.removeEventListener('il-dm', onDm);
-      window.removeEventListener('il-voice', onVoice);
+      window.removeEventListener('il-channel-added', onChannelAdded);
+      window.removeEventListener('il-channel-removed', onChannelRemoved);
     };
-  }, [appendMessage, registerUsers, refreshNotifications, reloadConversations, refreshDmUnread, refreshVoiceParticipants, currentUser]);
+  }, [appendMessage, registerUsers, refreshNotifications, reloadConversations, refreshDmUnread, reloadChannels, selectChannel, currentUser]);
 
   /* ── Session bootstrap ────────────────────────────────── */
   const enterApp = useCallback(
@@ -513,7 +505,6 @@ export default function InterLynkApp() {
     setActiveDm(null);
     setActiveDmUser(null);
     setDmUnread(0);
-    setVoiceParticipants({});
     setNotifications([]);
     setUnreadCount(0);
     setScreen('login');
@@ -556,7 +547,6 @@ export default function InterLynkApp() {
         roomId: session.roomId,
         callType: type,
         title: ch?.name || 'Call',
-        isVoiceChannel: false,
       });
       setInCall(true);
     },
@@ -572,30 +562,12 @@ export default function InterLynkApp() {
         roomId: session.roomId,
         callType: type,
         title: user.name,
-        isVoiceChannel: false,
         targetUserId: Number(user.id),
         isInitiator: true,
       });
       setInCall(true);
     },
     []
-  );
-
-  const joinVoiceChannel = useCallback(
-    async (channel: Channel) => {
-      const status = await api.joinVoiceChannel(channel.id);
-      if (status.roomId == null) return;
-      setCallSession({
-        roomId: status.roomId,
-        callType: 'voice',
-        title: channel.name,
-        isVoiceChannel: true,
-        channelId: channel.id,
-      });
-      setInCall(true);
-      refreshVoiceParticipants(channel.id);
-    },
-    [refreshVoiceParticipants]
   );
 
   const acceptIncomingCall = useCallback(async () => {
@@ -613,7 +585,6 @@ export default function InterLynkApp() {
       roomId: incomingCall.roomId,
       callType: incomingCall.callType,
       title: incomingCall.callerDisplayName || incomingCall.callerUsername,
-      isVoiceChannel: false,
       targetUserId: incomingCall.callerUserId,
       isInitiator: false,
     });
@@ -638,27 +609,11 @@ export default function InterLynkApp() {
 
   const endCurrentCall = useCallback(async () => {
     if (callSession) {
-      if (callSession.isVoiceChannel && callSession.channelId) {
-        await api.leaveVoiceChannel(callSession.channelId);
-        refreshVoiceParticipants(callSession.channelId);
-      } else {
-        await api.leaveCall(callSession.roomId);
-      }
+      await api.leaveCall(callSession.roomId);
     }
     setInCall(false);
     setCallSession(null);
-  }, [callSession, refreshVoiceParticipants]);
-
-  const createVoiceChannel = useCallback(async (name: string) => {
-    const ch = await api.createVoiceChannel(name);
-    await reloadChannels();
-    // Auto-join the new voice channel
-    const status = await api.joinVoiceChannel(ch.id);
-    if (status.roomId != null) {
-      setCallSession({ roomId: status.roomId, callType: 'voice', title: ch.name, isVoiceChannel: true, channelId: ch.id });
-      setInCall(true);
-    }
-  }, [reloadChannels]);
+  }, [callSession]);
 
   const inviteToChannel = useCallback(async (channelId: string, username: string) => {
     await api.inviteToChannel(channelId, username);
@@ -679,7 +634,7 @@ export default function InterLynkApp() {
       showTweaks, setShowTweaks,
       showNotif, setShowNotif,
       showAdmin, setShowAdmin,
-      channels, voiceChannels, reloadChannels, createChannel,
+      channels, reloadChannels, createChannel,
       messages, messagesLoading, sendMessage, reactToMessage,
       threadMsg, setThreadMsg,
       typingByChannel, notifyTyping,
@@ -687,27 +642,25 @@ export default function InterLynkApp() {
       activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm,
       profileUser, openProfile, closeProfile,
       notifications, unreadCount, markAllNotificationsRead,
-      voiceParticipants, refreshVoiceParticipants, joinVoiceChannel,
       inCall, setInCall, callSession,
       startChannelCall, startDirectCall, endCurrentCall,
       incomingCall, setIncomingCall, acceptIncomingCall,
       callEndReason, setCallEndReason,
-      createVoiceChannel,
       inviteToChannel,
     }),
     [
       screen, theme, accent, currentUser, usersById, getUser, registerUsers, searchUsers,
       login, logout, authError, activeChannel, selectChannel, activeView,
       sideOpen, rightOpen, showSettings, showTweaks, showNotif, showAdmin,
-      channels, voiceChannels, reloadChannels, createChannel,
+      channels, reloadChannels, createChannel,
       messages, messagesLoading, sendMessage, reactToMessage, threadMsg,
       typingByChannel, notifyTyping, conversations, reloadConversations, dmUnread,
       activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm,
       profileUser, openProfile, closeProfile, notifications, unreadCount,
-      markAllNotificationsRead, voiceParticipants, refreshVoiceParticipants,
-      joinVoiceChannel, inCall, callSession, startChannelCall, startDirectCall,
+      markAllNotificationsRead,
+      inCall, callSession, startChannelCall, startDirectCall,
       endCurrentCall, incomingCall, acceptIncomingCall,
-      callEndReason, createVoiceChannel, inviteToChannel,
+      callEndReason, inviteToChannel,
     ]
   );
 

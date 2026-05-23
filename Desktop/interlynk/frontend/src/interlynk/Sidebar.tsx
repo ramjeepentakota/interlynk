@@ -1,5 +1,6 @@
 /* InterLynk Workspace Rail + Sidebar — backend-wired.
-   Sections: People search, Direct Messages (inbox), Channels, Voice Channels. */
+   Sections: People search, Direct Messages (inbox), Channels.
+   (Voice channels were removed from the product.) */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Ic, type IconName } from './icons';
@@ -289,60 +290,21 @@ function DmItem({
   );
 }
 
-/* ── Voice channel row ───────────────────────────────────── */
-function VoiceChannelItem({ ch, participants, onJoin }: { ch: Channel; participants: { id: string; name: string; avatar?: string; color?: string }[]; onJoin: () => void }) {
-  const [h, hp] = useHover();
-  return (
-    <div>
-      <div
-        {...hp}
-        onClick={onJoin}
-        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 8px', borderRadius: 'var(--r)', cursor: 'pointer', background: h ? 'var(--bg-hover)' : 'transparent', color: 'var(--t3)', transition: 'all .12s', userSelect: 'none' }}
-      >
-        <Ic.Vol s={14} c="currentColor" />
-        <span style={{ flex: 1, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</span>
-        {participants.length > 0 ? (
-          <span style={{ fontSize: 11, color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-            {participants.length}
-          </span>
-        ) : (
-          <Ic.Phone s={12} c="var(--t3)" />
-        )}
-      </div>
-      {participants.length > 0 && (
-        <div style={{ marginLeft: 22, marginBottom: 2 }}>
-          {participants.map((u) => (
-            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px', color: 'var(--t2)', fontSize: 12 }}>
-              <Avatar user={u} size={18} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</span>
-              <Ic.Mic s={11} c="var(--ok)" style={{ marginLeft: 'auto' }} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function Sidebar() {
   const {
     activeChannel, selectChannel, sideOpen, channels, createChannel,
-    voiceChannels, voiceParticipants, joinVoiceChannel,
     conversations, activeDm, openDm,
-    createVoiceChannel, inviteToChannel,
+    inviteToChannel,
   } = useApp();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [showNewMessage, setShowNewMessage] = useState(false);
-  const [showCreateVoice, setShowCreateVoice] = useState(false);
-  const [newVoiceName, setNewVoiceName] = useState('');
-  const [creatingVoice, setCreatingVoice] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [createVoiceError, setCreateVoiceError] = useState('');
   const [showInvite, setShowInvite] = useState<string | null>(null); // channelId
 
+  // Defensively filter out any legacy VOICE-type channels that may still be
+  // sitting in the database — they should never render in the new UI.
   const textChannels = channels.filter((c) => c.type !== 'voice');
 
   const extractError = (e: any): string => {
@@ -366,22 +328,6 @@ export function Sidebar() {
       setCreateError(extractError(e));
     } finally {
       setCreating(false);
-    }
-  };
-
-  const handleCreateVoice = async () => {
-    const name = newVoiceName.trim();
-    if (!name || creatingVoice) return;
-    setCreatingVoice(true);
-    setCreateVoiceError('');
-    try {
-      await createVoiceChannel(name);
-      setNewVoiceName('');
-      setShowCreateVoice(false);
-    } catch (e) {
-      setCreateVoiceError(extractError(e));
-    } finally {
-      setCreatingVoice(false);
     }
   };
 
@@ -480,54 +426,22 @@ export function Sidebar() {
           )}
         </SideSection>
 
-        {/* Voice channels */}
-        <SideSection title="Voice Channels" onAdd={() => setShowCreateVoice(true)} addLabel="Create voice channel">
-          {showCreateVoice && (
-            <div className="il-fade-up" style={{ padding: '8px 6px', background: 'var(--bg-hover)', borderRadius: 'var(--r-lg)', margin: '4px 0', border: '1px solid var(--bd)' }}>
-              <input
-                value={newVoiceName}
-                onChange={(e) => { setNewVoiceName(e.target.value.replace(/\s+/g, '-')); setCreateVoiceError(''); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateVoice(); if (e.key === 'Escape') { setShowCreateVoice(false); setNewVoiceName(''); setCreateVoiceError(''); } }}
-                placeholder="voice-channel-name"
-                autoFocus
-                style={{ width: '100%', background: 'var(--bg-active)', border: `1px solid ${createVoiceError ? '#f87171' : 'var(--bd2)'}`, borderRadius: 'var(--r)', padding: '6px 9px', color: 'var(--t1)', fontSize: 13, outline: 'none', marginBottom: createVoiceError ? 4 : 6, fontFamily: "'DM Sans',sans-serif" }}
-              />
-              {createVoiceError && (
-                <div style={{ fontSize: 11, color: '#f87171', marginBottom: 6, lineHeight: 1.4 }}>{createVoiceError}</div>
-              )}
-              <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={handleCreateVoice} disabled={creatingVoice} style={{ flex: 1, padding: '5px 8px', borderRadius: 'var(--r)', background: 'var(--primary)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>{creatingVoice ? 'Creating…' : 'Create'}</button>
-                <button onClick={() => { setShowCreateVoice(false); setNewVoiceName(''); setCreateVoiceError(''); }} style={{ padding: '5px 8px', borderRadius: 'var(--r)', background: 'transparent', border: '1px solid var(--bd2)', color: 'var(--t2)', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
-              </div>
-            </div>
-          )}
-          {voiceChannels.map((ch) => (
-            <VoiceChannelItem
-              key={ch.id}
-              ch={ch}
-              participants={voiceParticipants[ch.id] || []}
-              onJoin={() => joinVoiceChannel(ch)}
-            />
-          ))}
-          {voiceChannels.length === 0 && !showCreateVoice && (
-            <div style={{ padding: '8px 6px', fontSize: 12, color: 'var(--t3)', lineHeight: 1.5 }}>
-              No voice channels yet. Click <strong style={{ color: 'var(--t2)' }}>+</strong> to create one.
-            </div>
-          )}
-        </SideSection>
       </div>
 
       <UserPanel />
 
       {showNewMessage && <NewMessageModal onClose={() => setShowNewMessage(false)} />}
-      {showInvite && (
-        <InviteChannelModal
-          channelId={showInvite}
-          channelName={channels.find((c) => c.id === showInvite)?.name || showInvite}
-          onClose={() => setShowInvite(null)}
-          onInvite={inviteToChannel}
-        />
-      )}
+      {showInvite && (() => {
+        const inviteCh = channels.find((c) => c.id === showInvite);
+        return (
+          <InviteChannelModal
+            channelId={showInvite}
+            channelName={inviteCh?.name || showInvite}
+            onClose={() => setShowInvite(null)}
+            onInvite={inviteToChannel}
+          />
+        );
+      })()}
     </div>
   );
 }

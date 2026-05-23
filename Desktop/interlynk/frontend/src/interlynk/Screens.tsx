@@ -1,5 +1,7 @@
 /* InterLynk Login + Call + Settings + Tweaks + Incoming Call.
-   Fully backend-wired; no mock participants or simulated calls. */
+   Fully backend-wired; no mock participants or simulated calls.
+   Voice CHANNELS (ambient, Discord-style) have been removed — only 1-on-1
+   and group voice/video calls are supported here. */
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Ic, type IconName } from './icons';
@@ -61,7 +63,7 @@ export function LoginScreen() {
             Your team,<br />
             <span style={{ background: 'linear-gradient(135deg,var(--primary),#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>in sync.</span>
           </h2>
-          <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 40 }}>Chat, calls, voice channels and code collaboration — all in one place.</p>
+          <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 40 }}>Chat, voice &amp; video calls, and code collaboration — all in one place.</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {features.map(({ icon, color, title, desc }) => {
@@ -183,7 +185,7 @@ function VideoTile({ p, big }: { p: LiveKitParticipant; big?: boolean }) {
   );
 }
 
-/** A circular avatar used in the voice-channel lobby roster. */
+/** A circular avatar used in the call lobby (mic-muted ring + name pill). */
 function VoiceAvatar({ name, identity, speaking, muted, isLocal }: { name: string; identity: string; speaking: boolean; muted: boolean; isLocal?: boolean }) {
   const avatarUser: Partial<User> = { name, color: colorFor(identity) };
   return (
@@ -202,7 +204,7 @@ function VoiceAvatar({ name, identity, speaking, muted, isLocal }: { name: strin
 }
 
 export function CallPanel() {
-  const { callSession, endCurrentCall, currentUser, voiceParticipants } = useApp();
+  const { callSession, endCurrentCall, currentUser } = useApp();
   const [token, setToken] = useState<api.LiveKitToken | null>(null);
   const [duration, setDuration] = useState(0);
   const callType = callSession?.callType ?? 'voice';
@@ -307,9 +309,28 @@ export function CallPanel() {
     const el = remoteAudioRef.current;
     if (!el || !webrtc.remoteStream) return;
     el.srcObject = webrtc.remoteStream;
+    el.muted = false;
+    el.volume = 1;
     // Autoplay is allowed here because entering a call is a user gesture, but
-    // guard anyway so a rejected promise doesn't surface as an unhandled error.
-    el.play?.().catch(() => undefined);
+    // some browsers (especially Chromium on a fresh tab) still reject the
+    // first play() — retry on the next tick so a transient rejection doesn't
+    // leave the call silent. Also re-run whenever the stream's track list
+    // changes so a late-arriving remote audio track is bound immediately.
+    const tryPlay = () => el.play?.().catch(() => undefined);
+    tryPlay();
+    const t1 = window.setTimeout(tryPlay, 100);
+    const t2 = window.setTimeout(tryPlay, 500);
+    const stream = webrtc.remoteStream;
+    const onAddTrack = () => {
+      el.srcObject = stream;
+      tryPlay();
+    };
+    stream.addEventListener?.('addtrack', onAddTrack);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      stream.removeEventListener?.('addtrack', onAddTrack);
+    };
   }, [webrtc.remoteStream]);
 
   useEffect(() => {
@@ -370,13 +391,9 @@ export function CallPanel() {
             ? 'connecting…'
             : 'ready';
 
-  // Roster: LiveKit participants when connected; otherwise the backend voice
-  // roster (so a voice channel always shows who has joined).
+  // Roster: LiveKit participants when connected. Voice-channel backend roster
+  // was removed along with the voice-channel feature.
   const lkParticipants = lk.participants;
-  const backendRoster: User[] =
-    callSession?.isVoiceChannel && callSession.channelId
-      ? voiceParticipants[callSession.channelId] || []
-      : [];
 
   const showLkVideoGrid = callType === 'video' && configured && lkParticipants.length > 0;
   // Use the video grid for video calls, and also whenever a screen is being
@@ -415,7 +432,7 @@ export function CallPanel() {
             <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: '#fff', fontWeight: 600 }}>{fmt(duration)}</span>
           </div>
           <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: callType === 'video' ? 'rgba(139,92,246,.2)' : 'rgba(34,197,94,.2)', color: callType === 'video' ? '#a78bfa' : '#4ade80', border: `1px solid ${callType === 'video' ? 'rgba(139,92,246,.3)' : 'rgba(34,197,94,.3)'}` }}>
-            {callSession?.isVoiceChannel ? '🔊 ' : callType === 'video' ? '📹 ' : '🎙 '}{title}
+            {callType === 'video' ? '📹 ' : '🎙 '}{title}
           </span>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>{stateLabel}</span>
         </div>
@@ -490,10 +507,6 @@ export function CallPanel() {
                   <VoiceAvatar name={currentUser?.name || 'You'} identity={currentUser?.username || 'you'} speaking={false} muted={!isMicOn} isLocal />
                   <VoiceAvatar name={title} identity="remote" speaking={false} muted={webrtc.remoteMuted} />
                 </>
-              ) : backendRoster.length > 0 ? (
-                backendRoster.map((u) => (
-                  <VoiceAvatar key={u.id} name={u.name} identity={u.username || u.id} speaking={false} muted={false} isLocal={currentUser?.id === u.id} />
-                ))
               ) : (
                 <VoiceAvatar
                   name={currentUser?.name || 'You'}

@@ -1,6 +1,5 @@
 package com.enterprise.collab.controller;
 
-import com.enterprise.collab.dto.CallDto;
 import com.enterprise.collab.dto.ChatDto;
 import com.enterprise.collab.entity.Channel;
 import com.enterprise.collab.service.ChatService;
@@ -32,7 +31,7 @@ public class ChatController {
     public ResponseEntity<ChatDto.ChannelResponse> createChannel(
             @RequestBody ChatDto.CreateChannelRequest request,
             Authentication authentication) {
-        
+
         Channel.ChannelType channelType;
         try {
             channelType = Channel.ChannelType.valueOf(request.getType().toUpperCase());
@@ -40,12 +39,17 @@ public class ChatController {
             // Default to TEXT if invalid type
             channelType = Channel.ChannelType.TEXT;
         }
-        
+        // Voice CHANNELS were removed from the product; never let a client
+        // create one. Quietly normalise any caller that still asks for VOICE.
+        if (channelType == Channel.ChannelType.VOICE) {
+            channelType = Channel.ChannelType.TEXT;
+        }
+
         return ResponseEntity.ok(chatService.createChannel(
-                request.getName(), 
-                request.getDescription(), 
-                channelType, 
-                request.getTeamId(), 
+                request.getName(),
+                request.getDescription(),
+                channelType,
+                request.getTeamId(),
                 authentication.getName()));
     }
     
@@ -108,11 +112,6 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getTextChannelsByTeam(teamId));
     }
     
-    @GetMapping("/teams/{teamId}/channels/voice")
-    public ResponseEntity<List<ChatDto.ChannelListResponse>> getVoiceChannelsByTeam(@PathVariable Long teamId) {
-        return ResponseEntity.ok(chatService.getVoiceChannelsByTeam(teamId));
-    }
-    
     @GetMapping("/channels/categories")
     public ResponseEntity<List<String>> getAllCategories() {
         return ResponseEntity.ok(chatService.getAllCategories());
@@ -136,36 +135,11 @@ public class ChatController {
         return ResponseEntity.ok(chatService.removeMemberFromChannel(channelId, username, authentication.getName()));
     }
     
-    // ============ Voice Channel Endpoints ============
-    
-    @PostMapping("/channels/{channelId}/voice/join")
-    public ResponseEntity<CallDto.CallRoomResponse> joinVoiceChannel(
-            @PathVariable Long channelId,
-            Authentication authentication) {
-        
-        return ResponseEntity.ok(chatService.joinVoiceChannel(channelId, authentication.getName()));
-    }
-    
-    @PostMapping("/channels/{channelId}/voice/leave")
-    public ResponseEntity<Void> leaveVoiceChannel(
-            @PathVariable Long channelId,
-            Authentication authentication) {
-        
-        chatService.leaveVoiceChannel(channelId, authentication.getName());
-        return ResponseEntity.ok().build();
-    }
-    
-    @GetMapping("/channels/{channelId}/voice")
-    public ResponseEntity<CallDto.CallRoomResponse> getVoiceChannelStatus(
-            @PathVariable Long channelId) {
-        
-        CallDto.CallRoomResponse status = chatService.getVoiceChannelStatus(channelId);
-        if (status == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(status);
-    }
-    
+    // ============ Voice Channel Endpoints — REMOVED ============
+    // The ambient voice-channel feature was removed from the product. Clients
+    // that still hit /api/channels/{id}/voice/* will receive 404 by default,
+    // which is the right answer: the resource genuinely no longer exists.
+
     // ============ Message endpoints ============
     
     @PostMapping("/channels/{channelId}/messages")

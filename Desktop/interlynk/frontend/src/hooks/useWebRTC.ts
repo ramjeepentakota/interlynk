@@ -214,20 +214,14 @@ export function useWebRTC({
     const peer = new RTCPeerConnection(ICE_CONFIG);
     videoSenderRef.current = null;
 
-    // Voice calls capture no camera, so there is no video sender to swap a
-    // screen-share track onto. Pre-negotiate a sendrecv video transceiver up
-    // front: both peers run createPeer, so the m-line is agreed during the
-    // initial offer/answer and screen share later becomes a zero-renegotiation
-    // replaceTrack(). Video calls already get a video sender from the camera
-    // track (set in addTracksFromStream), so skip the extra transceiver there.
-    if (callTypeRef.current !== 'video') {
-      try {
-        const vt = peer.addTransceiver('video', { direction: 'sendrecv' });
-        videoSenderRef.current = vt.sender;
-      } catch (err) {
-        console.warn('[WebRTC] Could not pre-add video transceiver', err);
-      }
-    }
+    // Intentionally NO pre-added video transceiver here. The previous
+    // implementation pre-added a sendrecv video m-line on both sides so screen
+    // share could later replaceTrack() without renegotiation. That forced an
+    // m=video, m=audio order in the SDP which, on real cross-network setups,
+    // could leave the audio transceiver in a half-paired state on the callee
+    // — producing the one-way audio bug. Voice calls now negotiate m=audio
+    // ONLY; screen share starts a normal renegotiation via addTrack +
+    // negotiationneeded (caller) or a 'renegotiate' signal (callee).
 
     peer.onicecandidate = (e) => {
       if (e.candidate) {
@@ -236,16 +230,50 @@ export function useWebRTC({
     };
 
     peer.ontrack = (e) => {
-      const [stream] = e.streams;
-      if (stream) {
-        setRemoteStream(stream);
-      } else if (e.track) {
-        // Some browsers may not pass streams; build one from the track.
-        setRemoteStream((prev) => {
-          const s = prev ?? new MediaStream();
-          s.addTrack(e.track);
-          return s;
+      // Accumulate every incoming track onto a single MediaStream so the
+      // <audio>/<video> consumers always see both kinds, even if the audio
+      // and video tracks arrive in separate ontrack events (Firefox) or with
+      // empty e.streams (some older browsers). Replacing remoteStream wholesale
+      // on each event was the bug that hid the remote audio track when the
+      // video track arrived later — leaving one direction silent.
+      setRemoteStream((prev) => {
+        const merged = prev ?? new MediaStream();
+        // Track the streams the browser handed us so future tracks share the
+        // same MediaStream identity where possible (helps consumers that key
+        // off stream.id).
+        const incoming = e.streams?.[0];
+        if (incoming) {
+          incoming.getTracks().forEach((t) => {
+            if (!merged.getTracks().some((x) => x.id === t.id)) {
+              try { merged.addTrack(t); } catch { /* duplicate */ }
+            }
+          });
+        } else if (e.track) {
+          if (!merged.getTracks().some((x) => x.id === e.track.id)) {
+            try { merged.addTrack(e.track); } catch { /* duplicate */ }
+          }
+        }
+        // Drop any tracks that have ended (e.g. peer stopped screen share).
+        merged.getTracks().forEach((t) => {
+          if (t.readyState === 'ended') {
+            try { merged.removeTrack(t); } catch { /* noop */ }
+          }
         });
+        // Return a new MediaStream wrapper so React sees a referential change
+        // and re-binds srcObject on consumers, while reusing the same tracks.
+        return new MediaStream(merged.getTracks());
+      });
+      // When the remote track itself ends (peer turned camera off, hung up),
+      // remove it from the merged stream so consumers stop trying to render it.
+      const track = e.track;
+      if (track) {
+        track.onended = () => {
+          setRemoteStream((prev) => {
+            if (!prev) return prev;
+            try { prev.removeTrack(track); } catch { /* noop */ }
+            return new MediaStream(prev.getTracks());
+          });
+        };
       }
     };
 
@@ -282,14 +310,96 @@ export function useWebRTC({
 
     peer.oniceconnectionstatechange = () => {
       if (peer.iceConnectionState === 'failed') {
-        // Try ICE restart
+        // Trigger ICE restart. restartIce() alone only marks the *next* offer
+        // as an ICE restart — it does NOT generate one. The caller side has to
+        // actually compose a new offer; the callee just answers whatever it
+        // gets. Without this follow-up, a transient ICE failure left the call
+        // permanently in `failed` with no media flowing.
         try { peer.restartIce(); } catch { /* noop */ }
+        if (isInitiatorRef.current) {
+          void (async () => {
+            try {
+              const offer = await peer.createOffer({ iceRestart: true });
+              await peer.setLocalDescription(offer);
+              sendSignal('offer', { sdp: JSON.stringify(offer) });
+            } catch (err) {
+              console.warn('[WebRTC] ICE restart offer failed', err);
+            }
+          })();
+        }
       }
+    };
+
+    // The caller responds to renegotiation triggers (e.g. dynamic addTrack).
+    // The callee never composes offers in this 1-on-1 architecture — it only
+    // answers — so we gate this on isInitiatorRef to avoid offer/offer races.
+    peer.onnegotiationneeded = () => {
+      if (!isInitiatorRef.current) return;
+      // Skip the initial offer (startCall composes it explicitly); only react
+      // to subsequent renegotiations once we have a stable connection.
+      if (peer.signalingState !== 'stable') return;
+      void (async () => {
+        try {
+          const offer = await peer.createOffer();
+          await peer.setLocalDescription(offer);
+          sendSignal('offer', { sdp: JSON.stringify(offer) });
+        } catch (err) {
+          console.warn('[WebRTC] renegotiation offer failed', err);
+        }
+      })();
     };
 
     peerRef.current = peer;
     remoteDescriptionSetRef.current = false;
     pendingIceRef.current = [];
+
+    // Expose a debug dumper on window so the user can diagnose audio issues
+    // from DevTools: `await __webrtcDebug()` prints senders, receivers,
+    // transceivers, and outbound/inbound RTP stats for the active call.
+    (window as unknown as { __webrtcDebug?: () => Promise<void> }).__webrtcDebug = async () => {
+      const p = peerRef.current;
+      if (!p) { console.log('[WebRTC debug] no active peer'); return; }
+      console.group('[WebRTC debug] connection state');
+      console.log('signalingState', p.signalingState);
+      console.log('connectionState', p.connectionState);
+      console.log('iceConnectionState', p.iceConnectionState);
+      console.log('iceGatheringState', p.iceGatheringState);
+      console.groupEnd();
+      console.group('[WebRTC debug] transceivers');
+      p.getTransceivers().forEach((t, i) => {
+        console.log(`#${i} mid=${t.mid} dir=${t.direction} curDir=${t.currentDirection}`, {
+          senderKind: t.sender.track?.kind,
+          senderTrackId: t.sender.track?.id,
+          senderTrackEnabled: t.sender.track?.enabled,
+          senderTrackMuted: t.sender.track?.muted,
+          receiverKind: t.receiver.track?.kind,
+          receiverTrackId: t.receiver.track?.id,
+          receiverTrackMuted: t.receiver.track?.muted,
+        });
+      });
+      console.groupEnd();
+      console.group('[WebRTC debug] local stream tracks');
+      localStreamRef.current?.getTracks().forEach((t) => {
+        console.log(`${t.kind} enabled=${t.enabled} muted=${t.muted} readyState=${t.readyState} id=${t.id}`);
+      });
+      console.groupEnd();
+      try {
+        const stats = await p.getStats();
+        console.group('[WebRTC debug] RTP stats');
+        stats.forEach((report: { type?: string; kind?: string; bytesSent?: number; bytesReceived?: number; packetsSent?: number; packetsReceived?: number; ssrc?: number }) => {
+          if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+            console.log('outbound audio bytesSent', report.bytesSent, 'packetsSent', report.packetsSent, 'ssrc', report.ssrc);
+          }
+          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+            console.log('inbound audio bytesReceived', report.bytesReceived, 'packetsReceived', report.packetsReceived, 'ssrc', report.ssrc);
+          }
+        });
+        console.groupEnd();
+      } catch (err) {
+        console.warn('[WebRTC debug] getStats failed', err);
+      }
+    };
+
     return peer;
   }, [sendSignal]);
 
@@ -452,6 +562,18 @@ export function useWebRTC({
       const peer = createPeer();
       addTracksFromStream(peer, stream);
 
+      // Force every transceiver we just attached to sendrecv before the offer
+      // is composed. The default is sendrecv already, but a previous renegotiation
+      // (e.g. screen share lifecycle) can leave a sender stuck in sendonly —
+      // which silently turns into one-way audio after the next handshake.
+      peer.getTransceivers().forEach((t) => {
+        try {
+          if (t.currentDirection !== 'stopped' && t.direction !== 'sendrecv') {
+            t.direction = 'sendrecv';
+          }
+        } catch { /* immutable */ }
+      });
+
       // No legacy offerToReceive* flags: the transceiver directions (audio
       // sendrecv from the mic track, video sendrecv from the camera track on
       // video calls or the pre-added transceiver on voice calls) already define
@@ -459,6 +581,16 @@ export function useWebRTC({
       // voice-call video transceiver to send-only and break two-way screen share.
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
+
+      if (import.meta.env.DEV) {
+        console.info('[WebRTC] caller offer transceivers',
+          peer.getTransceivers().map((t) => ({
+            mid: t.mid,
+            kind: t.sender.track?.kind ?? t.receiver.track?.kind,
+            direction: t.direction,
+            hasSenderTrack: Boolean(t.sender.track),
+          })));
+      }
 
       sendSignal('offer', { sdp: JSON.stringify(offer) });
     } catch (err) {
@@ -479,16 +611,60 @@ export function useWebRTC({
       setErrorMessage(null);
       setCallState('connecting');
       try {
-        const stream = await getLocalMedia();
         const peer = createPeer();
-        addTracksFromStream(peer, stream);
 
+        // STEP 1: Set the remote description FIRST. This creates matching
+        // transceivers on this side keyed to the offer's m-line mids. Doing
+        // it before any addTrack guarantees `addTrack` below will reuse those
+        // transceivers (matched by kind) rather than creating new unbound ones
+        // — which was the source of the one-way audio bug on Chromium↔Firefox
+        // over TURN.
         await peer.setRemoteDescription(new RTCSessionDescription(offer));
         remoteDescriptionSetRef.current = true;
         await flushPendingIce();
 
+        // STEP 2: Acquire local media (mic / camera). On failure, getLocalMedia
+        // already populated callState='error' and a friendly errorMessage.
+        const stream = await getLocalMedia();
+
+        // STEP 3: Attach every local track via the *simple* addTrack path.
+        // Per WebRTC spec, addTrack reuses an existing transceiver of the same
+        // kind whose sender has no track (which is exactly the case here: SRD
+        // just created the audio transceiver, and createPeer pre-added a video
+        // transceiver for voice calls). The browser also flips that
+        // transceiver's direction to 'sendrecv' as part of addTrack — no
+        // manual replaceTrack/find dance required.
+        stream.getTracks().forEach((track) => {
+          const sender = peer.addTrack(track, stream);
+          if (track.kind === 'video') videoSenderRef.current = sender;
+        });
+
+        // STEP 4: Defensively force every (non-stopped) transceiver to
+        // 'sendrecv' BEFORE createAnswer. Some browsers will otherwise leave
+        // the answer's m=audio at recvonly if they think the sender's track
+        // binding hasn't settled yet, which silently produces one-way audio.
+        peer.getTransceivers().forEach((t) => {
+          try {
+            if (t.currentDirection !== 'stopped' && t.direction !== 'sendrecv') {
+              t.direction = 'sendrecv';
+            }
+          } catch { /* immutable in some signaling states */ }
+        });
+
+        // STEP 5: Compose and send the answer.
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
+
+        if (import.meta.env.DEV) {
+          console.info('[WebRTC] callee answer transceivers',
+            peer.getTransceivers().map((t) => ({
+              mid: t.mid,
+              kind: t.receiver.track?.kind ?? t.sender.track?.kind,
+              direction: t.direction,
+              currentDirection: t.currentDirection,
+              hasSenderTrack: Boolean(t.sender.track),
+            })));
+        }
 
         sendSignal('answer', { sdp: JSON.stringify(answer) });
       } catch (err) {
@@ -518,8 +694,33 @@ export function useWebRTC({
         if (signal.type === 'offer') {
           if (!signal.sdp) return;
           const offer = JSON.parse(signal.sdp) as RTCSessionDescriptionInit;
-          // Callee path — create peer + accept the offer.
-          await acceptCall(offer);
+          const peer = peerRef.current;
+          // If we already have a connected peer, this is a renegotiation offer
+          // (e.g. the other side did an ICE restart or added a screen-share
+          // transceiver). Apply it in-place instead of going through the
+          // full acceptCall flow, which would tear down the active media.
+          if (peer && peer.signalingState !== 'closed' && remoteDescriptionSetRef.current) {
+            try {
+              await peer.setRemoteDescription(new RTCSessionDescription(offer));
+              // Force sendrecv on every active transceiver so a renegotiation
+              // can never silently downgrade audio direction.
+              peer.getTransceivers().forEach((t) => {
+                try {
+                  if (t.currentDirection !== 'stopped' && t.direction !== 'sendrecv') {
+                    t.direction = 'sendrecv';
+                  }
+                } catch { /* immutable */ }
+              });
+              const answer = await peer.createAnswer();
+              await peer.setLocalDescription(answer);
+              sendSignal('answer', { sdp: JSON.stringify(answer) });
+            } catch (err) {
+              console.warn('[WebRTC] renegotiation accept failed', err);
+            }
+          } else {
+            // Initial offer — callee path.
+            await acceptCall(offer);
+          }
         } else if (signal.type === 'answer') {
           const peer = peerRef.current;
           if (!peer || !signal.sdp) return;
@@ -529,6 +730,15 @@ export function useWebRTC({
             await peer.setRemoteDescription(new RTCSessionDescription(answer));
             remoteDescriptionSetRef.current = true;
             await flushPendingIce();
+            if (import.meta.env.DEV) {
+              console.info('[WebRTC] caller post-answer transceivers',
+                peer.getTransceivers().map((t) => ({
+                  mid: t.mid,
+                  kind: t.sender.track?.kind ?? t.receiver.track?.kind,
+                  direction: t.direction,
+                  currentDirection: t.currentDirection,
+                })));
+            }
           }
         } else if (signal.type === 'ice-candidate') {
           if (!signal.candidate) return;
@@ -543,6 +753,19 @@ export function useWebRTC({
           } else {
             // Buffer ICE arriving before remote description is set.
             pendingIceRef.current.push(candidate);
+          }
+        } else if (signal.type === 'renegotiate') {
+          // The non-initiator added a track (e.g. screen share) and asked us
+          // to compose a new offer. Only the initiator answers this.
+          const peer = peerRef.current;
+          if (!peer || !isInitiatorRef.current) return;
+          if (peer.signalingState !== 'stable') return;
+          try {
+            const newOffer = await peer.createOffer();
+            await peer.setLocalDescription(newOffer);
+            sendSignal('offer', { sdp: JSON.stringify(newOffer) });
+          } catch (err) {
+            console.warn('[WebRTC] renegotiate-on-request failed', err);
           }
         } else if (signal.type === 'media-state') {
           // Peer told us their mic/camera/screen state — reflect it in the UI.
@@ -644,15 +867,23 @@ export function useWebRTC({
     screenStreamRef.current = null;
 
     const cam = cameraTrackRef.current; // null on voice calls (no camera)
-
-    // Restore the outgoing video sender: back to the camera on a video call, or
-    // to nothing on a voice call (so we stop transmitting the screen). No
-    // renegotiation — the sender/transceiver already exists.
+    const peer = peerRef.current;
     const sender = getVideoSender();
-    if (sender) {
-      sender.replaceTrack(cam ?? null).catch((err) => {
+
+    if (cam && sender) {
+      // Video call — restore the camera onto the existing sender.
+      sender.replaceTrack(cam).catch((err) => {
         console.warn('[WebRTC] Failed to restore video sender', err);
       });
+    } else if (sender && peer) {
+      // Voice call — fully remove the video track so the m=video stops
+      // transmitting. replaceTrack(null) keeps the m-line; removeTrack drops
+      // it and triggers a renegotiation that cleanly closes the section.
+      try { peer.removeTrack(sender); } catch { /* noop */ }
+      videoSenderRef.current = null;
+      if (!isInitiatorRef.current) {
+        sendSignal('renegotiate', {});
+      }
     }
 
     // Update the local preview: drop the screen track, restore the camera.
@@ -670,7 +901,7 @@ export function useWebRTC({
     setIsScreenSharing(false);
     isScreenSharingRef.current = false;
     sendMediaState(); // tell the peer we stopped sharing
-  }, [sendMediaState]);
+  }, [sendMediaState, sendSignal]);
 
   const shareScreen = useCallback(async () => {
     // Mirror the same secure-context guard as getUserMedia: getDisplayMedia
@@ -699,13 +930,24 @@ export function useWebRTC({
       const videoTrack = screenStream.getVideoTracks()[0];
       if (!videoTrack) return;
 
-      // Send the screen over the always-present video sender (camera sender for
-      // video calls, pre-negotiated transceiver for voice calls). replaceTrack
-      // needs no renegotiation, so this works for BOTH call types.
+      const peer = peerRef.current;
       const sender = getVideoSender();
       if (sender) {
+        // Video calls and any prior screen-share session already have a video
+        // sender — swap the track without renegotiation.
         try { await sender.replaceTrack(videoTrack); }
         catch (err) { console.warn('[WebRTC] Failed to send screen track', err); }
+      } else if (peer) {
+        // Voice call — no video sender yet. Adding the track creates a new
+        // video transceiver and fires negotiationneeded; the initiator already
+        // listens for that and composes a renegotiation offer. If we are the
+        // non-initiator, ask the caller to renegotiate so the new m=video
+        // section actually gets exchanged.
+        const newSender = peer.addTrack(videoTrack, screenStream);
+        videoSenderRef.current = newSender;
+        if (!isInitiatorRef.current) {
+          sendSignal('renegotiate', {});
+        }
       }
 
       // Reflect the screen in the local preview. Set the camera aside (kept live)
@@ -742,7 +984,7 @@ export function useWebRTC({
       else if (e?.name === 'SecurityError') msg = 'Browser blocked screen sharing. Use https:// or http://localhost.';
       setErrorMessage(msg);
     }
-  }, [stopScreenShare, sendMediaState]);
+  }, [stopScreenShare, sendMediaState, sendSignal]);
 
   // ─── Cleanup on unmount ──────────────────────────────────────────────────────
 

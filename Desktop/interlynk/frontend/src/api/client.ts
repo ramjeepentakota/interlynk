@@ -187,16 +187,6 @@ export const channelApi = {
 
   removeMember: (channelId: string, username: string) =>
     apiClient.delete(`/api/channels/${channelId}/members?username=${username}`),
-
-  // Voice channel session control (persistent VOICE-type channels)
-  joinVoiceChannel: (channelId: string) =>
-    apiClient.post(`/api/channels/${channelId}/voice/join`),
-
-  leaveVoiceChannel: (channelId: string) =>
-    apiClient.post(`/api/channels/${channelId}/voice/leave`),
-
-  getVoiceChannelStatus: (channelId: string) =>
-    apiClient.get(`/api/channels/${channelId}/voice`),
 };
 
 // Direct Message (person-to-person inbox) API
