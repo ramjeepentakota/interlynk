@@ -64,6 +64,26 @@ interface UseWebRTCOptions {
   isInitiator: boolean; // true = caller (makes offer), false = callee (answers)
 }
 
+/** Audio-flow stats sampled from getStats every second. Exposed to the UI so
+ *  the user can see whether RTP is actually flowing in each direction —
+ *  invaluable for diagnosing one-way audio without DevTools. */
+export interface AudioFlow {
+  inKbps: number;
+  outKbps: number;
+  inboundStuck: boolean;  // peer is connected and sending out but receiving nothing
+  outboundStuck: boolean; // peer is connected but no outbound audio at all
+  /** Local mic audioLevel (0-1) from `media-source` stat. Confirms the mic
+   *  is actually capturing audible audio, not just streaming silence frames
+   *  (Opus DTX-encoded silence still produces ~5-20 kbps of RTP bytes that
+   *  fool a bytes-only diagnostic into thinking audio is fine). */
+  localLevel: number;
+  /** Remote received audioLevel (0-1) from `inbound-rtp` stat. Confirms the
+   *  decoded remote audio has content. If kbps is non-zero but this stays at
+   *  0, the peer is sending silence (their mic). If this is non-zero but the
+   *  user hears nothing, the bug is in playback (element/output device). */
+  remoteLevel: number;
+}
+
 interface UseWebRTCReturn {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -77,6 +97,8 @@ interface UseWebRTCReturn {
   remoteMuted: boolean;
   remoteVideoOff: boolean;
   remoteScreenSharing: boolean;
+  /** Live audio-flow stats — see AudioFlow. */
+  audioFlow: AudioFlow;
   /** Request mic/cam permission and capture local media without starting signaling.
    *  Safe to call multiple times — returns the existing stream on subsequent calls. */
   preflightLocalMedia: () => Promise<MediaStream | null>;
@@ -116,6 +138,7 @@ export function useWebRTC({
   const [remoteMuted, setRemoteMuted] = useState(false);
   const [remoteVideoOff, setRemoteVideoOff] = useState(callType !== 'video');
   const [remoteScreenSharing, setRemoteScreenSharing] = useState(false);
+  const [audioFlow, setAudioFlow] = useState<AudioFlow>({ inKbps: 0, outKbps: 0, inboundStuck: false, outboundStuck: false, localLevel: 0, remoteLevel: 0 });
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -986,6 +1009,110 @@ export function useWebRTC({
     }
   }, [stopScreenShare, sendMediaState, sendSignal]);
 
+  // ─── Audio-flow watchdog ───────────────────────────────────────────────────
+  // Polls getStats() once per second while connected and:
+  //   1. Exposes inbound/outbound audio kbps for a visible UI indicator.
+  //   2. Detects "inbound stuck at 0 while outbound flows" — the signature of
+  //      one-way audio caused by NAT/firewall asymmetry over STUN-only (no
+  //      TURN). When detected, the initiator side composes an ICE-restart
+  //      offer to nudge the connection onto a working candidate pair.
+  // This is the deterministic recovery path for the "one user can't hear the
+  // other" symptom that varies between attempts.
+  useEffect(() => {
+    if (callState !== 'connected') return;
+    let cancelled = false;
+    let prevIn = 0;
+    let prevOut = 0;
+    let prevTs = 0;
+    let stuckInSamples = 0;     // consecutive seconds with inbound=0 while outbound>0
+    let restartRequested = false;
+    let prevRemoteEnergy = 0;
+    let prevRemoteSamples = 0;
+    const sample = async () => {
+      const peer = peerRef.current;
+      if (!peer || cancelled) return;
+      try {
+        const stats = await peer.getStats();
+        let inboundBytes = 0;
+        let outboundBytes = 0;
+        let ts = 0;
+        let localLevel = 0;
+        let remoteAudioLevelDirect = -1; // -1 = not reported by browser
+        let remoteEnergy = 0;
+        let remoteSamples = 0;
+        stats.forEach((r: { type?: string; kind?: string; bytesReceived?: number; bytesSent?: number; timestamp?: number; audioLevel?: number; totalAudioEnergy?: number; totalSamplesDuration?: number }) => {
+          if (r.kind !== 'audio') return;
+          if (r.type === 'inbound-rtp') {
+            inboundBytes += r.bytesReceived ?? 0;
+            if (typeof r.audioLevel === 'number') remoteAudioLevelDirect = Math.max(remoteAudioLevelDirect, r.audioLevel);
+            if (typeof r.totalAudioEnergy === 'number') remoteEnergy = r.totalAudioEnergy;
+            if (typeof r.totalSamplesDuration === 'number') remoteSamples = r.totalSamplesDuration;
+            if (r.timestamp && r.timestamp > ts) ts = r.timestamp;
+          } else if (r.type === 'outbound-rtp') {
+            outboundBytes += r.bytesSent ?? 0;
+            if (r.timestamp && r.timestamp > ts) ts = r.timestamp;
+          } else if (r.type === 'media-source') {
+            if (typeof r.audioLevel === 'number') localLevel = Math.max(localLevel, r.audioLevel);
+          }
+        });
+        if (cancelled) return;
+        const dtSec = prevTs ? Math.max(0.001, (ts - prevTs) / 1000) : 1;
+        const inDelta = Math.max(0, inboundBytes - prevIn);
+        const outDelta = Math.max(0, outboundBytes - prevOut);
+        const inKbps = prevTs ? (inDelta * 8) / 1000 / dtSec : 0;
+        const outKbps = prevTs ? (outDelta * 8) / 1000 / dtSec : 0;
+        // Remote audio amplitude: prefer the direct audioLevel field; if the
+        // browser doesn't report it, derive an RMS-like value from the energy
+        // delta (totalAudioEnergy is integrated RMS²·duration; divide by the
+        // samples-duration delta and sqrt to get RMS).
+        let remoteLevel = 0;
+        if (remoteAudioLevelDirect >= 0) {
+          remoteLevel = remoteAudioLevelDirect;
+        } else if (prevRemoteSamples > 0) {
+          const energyDelta = Math.max(0, remoteEnergy - prevRemoteEnergy);
+          const sampleDelta = Math.max(0.001, remoteSamples - prevRemoteSamples);
+          remoteLevel = Math.min(1, Math.sqrt(energyDelta / sampleDelta));
+        }
+        prevRemoteEnergy = remoteEnergy;
+        prevRemoteSamples = remoteSamples;
+        prevIn = inboundBytes;
+        prevOut = outboundBytes;
+        prevTs = ts;
+
+        // Track consecutive stuck-inbound seconds. We require some outbound
+        // activity (>=2 kbps) before declaring inbound "stuck", to avoid false
+        // positives when both peers are silent.
+        if (prevTs && inKbps < 1 && outKbps >= 2) stuckInSamples += 1;
+        else stuckInSamples = 0;
+
+        const inboundStuck = stuckInSamples >= 5;
+        const outboundStuck = prevTs > 0 && outKbps < 1 && !isMutedRef.current;
+        setAudioFlow({ inKbps, outKbps, inboundStuck, outboundStuck, localLevel, remoteLevel });
+
+        // After ~6s of stuck inbound, trigger ONE ICE restart from the
+        // initiator side. ICE renegotiation often resolves asymmetric
+        // candidate-pair selection without forcing a full reconnect.
+        if (inboundStuck && !restartRequested && isInitiatorRef.current) {
+          restartRequested = true;
+          console.warn('[WebRTC] Inbound audio stuck — triggering ICE restart');
+          try {
+            peer.restartIce();
+            const offer = await peer.createOffer({ iceRestart: true });
+            await peer.setLocalDescription(offer);
+            sendSignal('offer', { sdp: JSON.stringify(offer) });
+          } catch (err) {
+            console.warn('[WebRTC] ICE restart failed', err);
+          }
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('[WebRTC] audio-flow getStats failed', err);
+      }
+    };
+    const id = window.setInterval(sample, 1000);
+    void sample();
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, [callState, sendSignal]);
+
   // ─── Cleanup on unmount ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -1013,6 +1140,7 @@ export function useWebRTC({
     remoteMuted,
     remoteVideoOff,
     remoteScreenSharing,
+    audioFlow,
     preflightLocalMedia,
     startCall,
     acceptCall,

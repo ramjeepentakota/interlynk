@@ -269,50 +269,16 @@ export function Input({
 }
 
 /* ── Tooltip ─────────────────────────────────────────────── */
+// The user explicitly asked to remove hover-label tooltips across the UI
+// (settings/schedule/etc. were calling out their names on cursor-over).
+// Keeping <Tip> as a passthrough preserves call sites without leaking
+// floating chips into the page.
 export function Tip({
   children,
-  label,
-  pos = 'top',
 }: {
   children: ReactNode;
   label?: string;
   pos?: 'top' | 'bottom' | 'right' | 'left';
 }) {
-  const [show, setShow] = useState(false);
-  const offsets: Record<string, CSSProperties> = {
-    top: { bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)' },
-    bottom: { top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)' },
-    right: { left: 'calc(100% + 6px)', top: '50%', transform: 'translateY(-50%)' },
-    left: { right: 'calc(100% + 6px)', top: '50%', transform: 'translateY(-50%)' },
-  };
-  return (
-    <div
-      style={{ position: 'relative', display: 'inline-flex' }}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      {children}
-      {show && label && (
-        <div
-          style={{
-            position: 'absolute',
-            ...offsets[pos],
-            background: '#1a1a2e',
-            color: 'var(--t1)',
-            padding: '4px 9px',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 500,
-            whiteSpace: 'nowrap',
-            pointerEvents: 'none',
-            zIndex: 9999,
-            border: '1px solid var(--bd2)',
-            boxShadow: '0 4px 16px rgba(0,0,0,.5)',
-          }}
-        >
-          {label}
-        </div>
-      )}
-    </div>
-  );
+  return <>{children}</>;
 }

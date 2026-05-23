@@ -1,12 +1,12 @@
 {
-  "name": "Interlynk",
-  "short_name": "Interlynk",
-  "description": "Team communication and collaboration",
+  "name": "Narada",
+  "short_name": "Narada",
+  "description": "Narada — Connect · Communicate · Inspire",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#07080d",
-  "theme_color": "#07080d",
+  "background_color": "#e7dcc4",
+  "theme_color": "#e7dcc4",
   "icons": [
     { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
   ]

@@ -118,7 +118,7 @@ export const authApi = {
   
   getProfile: () => apiClient.get('/api/v1/auth/me'),
   
-  updateProfile: (data: { displayName?: string; avatar?: string }) =>
+  updateProfile: (data: { displayName?: string; avatarUrl?: string }) =>
     apiClient.put('/api/v1/auth/profile', data),
   
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -403,6 +403,57 @@ export const scheduledMessageApi = {
   create: (data: { channelId: number | string; content: string; dispatchAt: string }) =>
     apiClient.post('/api/scheduled-messages', data),
   cancel: (id: number | string) => apiClient.delete(`/api/scheduled-messages/${id}`),
+};
+
+export interface ScheduledCallInvitee {
+  userId: number;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+export interface ScheduledCall {
+  id: number;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  callType: 'voice' | 'video';
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  callRoomId: number | null;
+  createdByUserId: number;
+  createdByUsername: string;
+  createdByDisplayName?: string;
+  invitees: ScheduledCallInvitee[];
+  createdAt: string;
+}
+
+export const scheduledCallApi = {
+  // Upcoming (PENDING/ACTIVE) calls you host or were invited to.
+  list: () => apiClient.get<ScheduledCall[]>('/api/scheduled-calls'),
+
+  get: (id: number | string) => apiClient.get<ScheduledCall>(`/api/scheduled-calls/${id}`),
+
+  // scheduledAt must be an ISO local datetime, e.g. "2026-05-23T15:30:00".
+  create: (data: {
+    title: string;
+    scheduledAt: string;
+    durationMinutes?: number;
+    callType?: 'voice' | 'video';
+    inviteeIds: number[];
+  }) => apiClient.post<ScheduledCall>('/api/scheduled-calls', data),
+
+  update: (
+    id: number | string,
+    data: Partial<{
+      title: string;
+      scheduledAt: string;
+      durationMinutes: number;
+      callType: 'voice' | 'video';
+      inviteeIds: number[];
+    }>,
+  ) => apiClient.put<ScheduledCall>(`/api/scheduled-calls/${id}`, data),
+
+  cancel: (id: number | string) => apiClient.delete(`/api/scheduled-calls/${id}`),
 };
 
 export const webhookAdminApi = {

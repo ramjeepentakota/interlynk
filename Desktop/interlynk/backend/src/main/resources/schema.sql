@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     display_name VARCHAR(100),
     password_hash VARCHAR(255) NOT NULL,
-    avatar_url VARCHAR(500),
+    avatar_url TEXT,
     presence VARCHAR(20) DEFAULT 'OFFLINE',
     status VARCHAR(20) DEFAULT 'ACTIVE',
     last_seen_at DATETIME,

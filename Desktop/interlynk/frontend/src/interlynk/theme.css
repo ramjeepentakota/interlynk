@@ -56,7 +56,29 @@
 
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 html,body { height:100%; overflow:hidden; }
-body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg-base); color:var(--t1); -webkit-font-smoothing:antialiased; }
+/* Body backdrop — uses the same Narada mandala + radial-gradient design
+   in BOTH dark and light modes so the visual identity is identical across
+   themes. Previously only dark mode looked branded; light mode rendered as
+   a flat ivory page. */
+body {
+  font-family:'DM Sans',system-ui,sans-serif;
+  color:var(--t1);
+  -webkit-font-smoothing:antialiased;
+  background-color:var(--bg-base);
+  background-image:
+    radial-gradient(circle at 12% 15%, var(--primary-dim) 0%, transparent 55%),
+    radial-gradient(circle at 88% 85%, var(--primary-dim) 0%, transparent 55%),
+    url('/narada-mandala.svg');
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: top left, bottom right, center;
+  background-size: 60vmin 60vmin, 50vmin 50vmin, min(80vmin, 720px) min(80vmin, 720px);
+  background-attachment: fixed, fixed, fixed;
+}
+[data-theme="light"] body {
+  /* The mandala asset is dark — lift its opacity in light mode via a
+     blend mode so the same artwork is visible on an ivory background. */
+  background-blend-mode: normal, normal, multiply;
+}
 #root { height:100vh; width:100vw; overflow:hidden; display:flex; }
 
 ::-webkit-scrollbar { width:4px; height:4px; }
@@ -87,6 +109,33 @@ body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg-base); co
 .il-spin { animation:spin .9s linear infinite; }
 .il-pulse-anim { animation:pulse 2s ease-in-out infinite; }
 .il-speak-ring { animation:speakPulse 1.4s ease-in-out infinite; }
+.il-rec-dot { animation:pulse 1.1s ease-in-out infinite; }
+
+/* Mandala watermark — used as a faint decorative backdrop on spacious surfaces */
+.il-mandala {
+  position:absolute;
+  pointer-events:none;
+  background:url('/narada-mandala.svg') no-repeat center/contain;
+  opacity:.05;
+}
+[data-theme="light"] .il-mandala { opacity:.07; }
+
+/* Shared chat backdrop — applied to the main content column so the same
+   mandala + soft accent glows appear in BOTH dark and light themes. */
+.il-main-bg {
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(circle at 14% 12%, var(--primary-dim) 0%, transparent 55%),
+    radial-gradient(circle at 86% 88%, var(--primary-dim) 0%, transparent 55%),
+    url('/narada-mandala.svg');
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: top left, bottom right, center;
+  background-size: 60vmin 60vmin, 50vmin 50vmin, min(70vmin, 640px) min(70vmin, 640px);
+  background-attachment: local, local, local;
+}
+[data-theme="light"] .il-main-bg {
+  background-blend-mode: normal, normal, multiply;
+}
 
 /* Formatting toolbar button */
 .il-fmt-btn { padding:3px 6px; border:none; background:transparent; color:var(--t2); border-radius:4px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13px; transition:all .12s; }

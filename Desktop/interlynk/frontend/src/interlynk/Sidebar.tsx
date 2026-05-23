@@ -8,7 +8,7 @@ import { Avatar, Badge, Tip, useHover } from './ui';
 import { useApp } from './context';
 import { type Channel } from './data';
 import * as api from './api';
-import { NewMessageModal } from './People';
+import { InlinePeopleSearch } from './People';
 
 function RailIcon({
   label,
@@ -41,16 +41,12 @@ function RailIcon({
 export function WorkspaceRail() {
   const { currentUser, setShowAdmin, showAdmin } = useApp();
   const isAdmin = currentUser?.role === 'ADMIN';
+  if (!isAdmin) return null;
   return (
-    <div style={{ width: 'var(--rail-w)', height: '100vh', background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 10, paddingBottom: 10, gap: 2, borderRight: '1px solid var(--bd)', flexShrink: 0 }}>
-      <RailIcon label="InterLynk" active={!showAdmin} onClick={() => setShowAdmin(false)}>
-        <span style={{ color: '#fff', fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 15 }}>IL</span>
+    <div className="il-rail" style={{ width: 'var(--rail-w)', height: '100vh', background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 10, paddingBottom: 10, gap: 2, borderRight: '1px solid var(--bd)', flexShrink: 0 }}>
+      <RailIcon label="Admin Center" active={showAdmin} onClick={() => setShowAdmin(true)}>
+        <Ic.Shield s={18} c="#fff" />
       </RailIcon>
-      {isAdmin && (
-        <RailIcon label="Admin Center" active={showAdmin} onClick={() => setShowAdmin(true)}>
-          <Ic.Shield s={18} c="#fff" />
-        </RailIcon>
-      )}
       <div style={{ flex: 1 }} />
       <div style={{ height: 6 }} />
     </div>
@@ -142,7 +138,7 @@ function InviteChannelModal({ channelId, channelName, onClose, onInvite }: { cha
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 8000, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div className="il-scale-in" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd)', borderRadius: 'var(--r-xl)', padding: 24, width: 400, boxShadow: '0 24px 80px rgba(0,0,0,.7)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="il-scale-in il-modal-card il-invite-modal" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd)', borderRadius: 'var(--r-xl)', padding: 24, width: 400, boxShadow: '0 24px 80px rgba(0,0,0,.7)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Invite to #{channelName}</div>
@@ -299,7 +295,6 @@ export function Sidebar() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [showNewMessage, setShowNewMessage] = useState(false);
   const [createError, setCreateError] = useState('');
   const [showInvite, setShowInvite] = useState<string | null>(null); // channelId
 
@@ -333,32 +328,17 @@ export function Sidebar() {
 
   if (!sideOpen) return null;
   return (
-    <div className="il-slide-l" style={{ width: 'var(--side-w)', height: '100vh', background: 'var(--bg-sidebar)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--bd)', flexShrink: 0 }}>
-      <div style={{ height: 'var(--topbar-h)', padding: '0 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, padding: '6px 4px' }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#fff', fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 13 }}>IL</span>
-          </div>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>InterLynk</div>
-            <div style={{ fontSize: 11, color: 'var(--t3)' }}>{textChannels.length} channel{textChannels.length === 1 ? '' : 's'}</div>
-          </div>
-        </div>
-        <Tip label="Find people / new message" pos="bottom">
-          <button
-            onClick={() => setShowNewMessage(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
-          >
-            <Ic.Search s={16} />
-          </button>
-        </Tip>
+    <div className="il-slide-l il-sidebar" style={{ width: 'var(--side-w)', height: '100vh', background: 'var(--bg-sidebar)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--bd)', flexShrink: 0 }}>
+      <div style={{ height: 'var(--topbar-h)', padding: '4px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
+        <img src="/narada-logo.png" alt="Narada" style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0' }}>
         {/* Direct messages (inbox) */}
-        <SideSection title="Direct Messages" onAdd={() => setShowNewMessage(true)} addLabel="New message">
+        <SideSection title="Direct Messages">
+          <div style={{ padding: '2px 4px 6px' }}>
+            <InlinePeopleSearch width="100%" placeholder="Search people…" />
+          </div>
           {conversations.map((c) => (
             <DmItem
               key={c.userId}
@@ -370,14 +350,8 @@ export function Sidebar() {
             />
           ))}
           {conversations.length === 0 && (
-            <div style={{ padding: '8px 6px' }}>
-              <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 7, lineHeight: 1.5 }}>No conversations yet. Find a teammate to start chatting.</p>
-              <button
-                onClick={() => setShowNewMessage(true)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 10px', borderRadius: 'var(--r)', border: '1.5px dashed var(--bd2)', background: 'transparent', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%' }}
-              >
-                <Ic.Search s={13} /> Find people
-              </button>
+            <div style={{ padding: '4px 6px 8px', fontSize: 12, color: 'var(--t3)', lineHeight: 1.5 }}>
+              No conversations yet. Search above to find a teammate.
             </div>
           )}
         </SideSection>
@@ -430,7 +404,6 @@ export function Sidebar() {
 
       <UserPanel />
 
-      {showNewMessage && <NewMessageModal onClose={() => setShowNewMessage(false)} />}
       {showInvite && (() => {
         const inviteCh = channels.find((c) => c.id === showInvite);
         return (

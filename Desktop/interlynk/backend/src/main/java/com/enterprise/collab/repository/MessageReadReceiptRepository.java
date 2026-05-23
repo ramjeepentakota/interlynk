@@ -15,6 +15,11 @@ import java.util.Optional;
 public interface MessageReadReceiptRepository extends JpaRepository<MessageReadReceipt, Long> {
     
     Optional<MessageReadReceipt> findByMessageIdAndUserId(Long messageId, Long userId);
+
+    boolean existsByMessageIdAndUserId(Long messageId, Long userId);
+
+    @Query("SELECT r.user.id FROM MessageReadReceipt r WHERE r.message.id = :messageId")
+    List<Long> findReaderIdsByMessageId(Long messageId);
     
     @Query("SELECT r FROM MessageReadReceipt r WHERE r.message.channel.id = :channelId AND r.user.id = :userId ORDER BY r.readAt DESC")
     List<MessageReadReceipt> findByChannelIdAndUserId(Long channelId, Long userId);

@@ -183,6 +183,64 @@ public class ChatDto {
         private List<AttachmentDto> attachments;
         private int replyCount;
         private Long readAt;  // Timestamp when message was read
+        private List<Long> readBy;  // User IDs (besides the sender) who have read this message
+        private PollDto poll;  // Present only on POLL messages
+    }
+
+    // ============ Poll DTOs ============
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CreatePollRequest {
+        private String question;
+        private List<String> options;
+        private Boolean allowMultiple;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class VotePollRequest {
+        private List<Long> optionIds;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PollOptionDto {
+        private Long id;
+        private String text;
+        private long voteCount;
+        private int position;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PollDto {
+        private Long id;
+        private Long messageId;
+        private String question;
+        private boolean allowMultiple;
+        private boolean closed;
+        private long totalVotes;
+        private List<PollOptionDto> options;
+        private List<Long> votedOptionIds;  // viewer-specific; empty in broadcasts
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PollUpdateEvent {
+        private String type;        // always "poll_update"
+        private Long channelId;
+        private PollDto poll;       // counts-only snapshot (no viewer vote state)
     }
     
     @Data

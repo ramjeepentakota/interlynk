@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none">
+  <g stroke="#c9a85c" fill="none" stroke-width="1" transform="translate(300,300)">
+    <!-- concentric rings -->
+    <circle r="40"/>
+    <circle r="92"/>
+    <circle r="150"/>
+    <circle r="214"/>
+    <circle r="284"/>
+    <!-- inner ring of 12 petals -->
+    <g>
+      <g id="p1">
+        <path d="M0,-40 C 26,-78 26,-128 0,-150 C -26,-128 -26,-78 0,-40 Z"/>
+      </g>
+      <use href="#p1" transform="rotate(30)"/>
+      <use href="#p1" transform="rotate(60)"/>
+      <use href="#p1" transform="rotate(90)"/>
+      <use href="#p1" transform="rotate(120)"/>
+      <use href="#p1" transform="rotate(150)"/>
+      <use href="#p1" transform="rotate(180)"/>
+      <use href="#p1" transform="rotate(210)"/>
+      <use href="#p1" transform="rotate(240)"/>
+      <use href="#p1" transform="rotate(270)"/>
+      <use href="#p1" transform="rotate(300)"/>
+      <use href="#p1" transform="rotate(330)"/>
+    </g>
+    <!-- outer ring of 24 radial spokes + lotus tips -->
+    <g>
+      <g id="p2">
+        <path d="M0,-150 L 0,-214"/>
+        <path d="M0,-214 C 12,-236 12,-262 0,-284 C -12,-262 -12,-236 0,-214 Z"/>
+      </g>
+      <use href="#p2" transform="rotate(15)"/>
+      <use href="#p2" transform="rotate(30)"/>
+      <use href="#p2" transform="rotate(45)"/>
+      <use href="#p2" transform="rotate(60)"/>
+      <use href="#p2" transform="rotate(75)"/>
+      <use href="#p2" transform="rotate(90)"/>
+      <use href="#p2" transform="rotate(105)"/>
+      <use href="#p2" transform="rotate(120)"/>
+      <use href="#p2" transform="rotate(135)"/>
+      <use href="#p2" transform="rotate(150)"/>
+      <use href="#p2" transform="rotate(165)"/>
+      <use href="#p2" transform="rotate(180)"/>
+      <use href="#p2" transform="rotate(195)"/>
+      <use href="#p2" transform="rotate(210)"/>
+      <use href="#p2" transform="rotate(225)"/>
+      <use href="#p2" transform="rotate(240)"/>
+      <use href="#p2" transform="rotate(255)"/>
+      <use href="#p2" transform="rotate(270)"/>
+      <use href="#p2" transform="rotate(285)"/>
+      <use href="#p2" transform="rotate(300)"/>
+      <use href="#p2" transform="rotate(315)"/>
+      <use href="#p2" transform="rotate(330)"/>
+      <use href="#p2" transform="rotate(345)"/>
+    </g>
+  </g>
+</svg>

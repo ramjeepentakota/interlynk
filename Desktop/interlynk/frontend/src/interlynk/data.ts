@@ -52,23 +52,68 @@ export interface DirectMessageItem {
   createdAt?: string;
 }
 
+export interface Attachment {
+  id?: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;       // MIME type
+  fileSize: number;
+  kind?: 'image' | 'video' | 'audio' | 'voice' | 'gif' | 'doc';
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  voteCount: number;
+  position: number;
+}
+
+export interface Poll {
+  id: string;
+  messageId: string;
+  question: string;
+  allowMultiple: boolean;
+  closed: boolean;
+  totalVotes: number;
+  options: PollOption[];
+  /** Option ids the current user has voted for. */
+  votedOptionIds: string[];
+}
+
 export interface Message {
   id: string;
   userId: string;
   content: string;
   time: string;
   date: string;
+  createdAt?: string;
   reactions?: Reaction[];
   replies?: number;
   isEdited?: boolean;
+  attachments?: Attachment[];
+  poll?: Poll;
+  /** Other user ids (besides sender) who have read this message. */
+  readBy?: string[];
+  /** True if the message has been delivered to the server (vs. an optimistic local-only echo). */
+  delivered?: boolean;
 }
 
+// Presence dot colors: online = green, away = amber/yellow, everything
+// unavailable (busy / do-not-disturb / offline) = red.
 export const STATUS_COLORS: Record<string, string> = {
   online: '#22c55e',
   away: '#f59e0b',
   busy: '#ef4444',
   dnd: '#ef4444',
-  offline: '#5a587c',
+  offline: '#ef4444',
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+  online: 'Online',
+  away: 'Away',
+  busy: 'Busy',
+  dnd: 'Do not disturb',
+  offline: 'Offline',
 };
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -188,6 +233,54 @@ export function formatDateLabel(raw?: string): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function attachmentKind(mime?: string, name?: string): Attachment['kind'] {
+  const m = (mime || '').toLowerCase();
+  const n = (name || '').toLowerCase();
+  if (m.startsWith('image/gif') || n.endsWith('.gif')) return 'gif';
+  if (m.startsWith('image/')) return 'image';
+  if (m.startsWith('video/')) return 'video';
+  if (m.startsWith('audio/')) {
+    // .webm / .ogg / .wav recorded via MediaRecorder is treated as a voice note.
+    if (n.includes('voice') || n.startsWith('voice-note') || n.endsWith('.webm') || n.endsWith('.ogg')) return 'voice';
+    return 'audio';
+  }
+  return 'doc';
+}
+
+export function mapAttachment(dto: any): Attachment {
+  const fileName = dto.fileName ?? dto.filename ?? dto.name ?? 'file';
+  const fileUrl = dto.fileUrl ?? dto.url ?? '';
+  const fileType = dto.fileType ?? dto.mimeType ?? '';
+  const fileSize = Number(dto.fileSize ?? dto.size ?? 0);
+  return {
+    id: dto.id != null ? String(dto.id) : undefined,
+    fileName,
+    fileUrl,
+    fileType,
+    fileSize,
+    kind: attachmentKind(fileType, fileName),
+  };
+}
+
+export function mapPoll(dto: any): Poll {
+  const options: PollOption[] = (dto.options || []).map((o: any) => ({
+    id: String(o.id),
+    text: o.text ?? '',
+    voteCount: Number(o.voteCount ?? 0),
+    position: Number(o.position ?? 0),
+  }));
+  return {
+    id: String(dto.id),
+    messageId: String(dto.messageId ?? ''),
+    question: dto.question ?? '',
+    allowMultiple: Boolean(dto.allowMultiple),
+    closed: Boolean(dto.closed),
+    totalVotes: Number(dto.totalVotes ?? 0),
+    options,
+    votedOptionIds: (dto.votedOptionIds || []).map((id: any) => String(id)),
+  };
+}
+
 /** Maps a backend ChatDto.MessageResponse to the UI Message. */
 export function mapMessage(dto: any): Message {
   const reactions: Reaction[] = (dto.reactions || []).map((r: any) => ({
@@ -195,15 +288,25 @@ export function mapMessage(dto: any): Message {
     count: r.count ?? (r.users ? r.users.length : 0),
     reacted: Boolean(r.reactedByCurrentUser),
   }));
+  const attachments: Attachment[] = (dto.attachments || []).map(mapAttachment);
+  const readByRaw = dto.readBy ?? dto.seenBy ?? [];
+  const readBy: string[] = Array.isArray(readByRaw)
+    ? readByRaw.map((u: any) => String(u?.id ?? u?.userId ?? u)).filter(Boolean)
+    : [];
   return {
     id: String(dto.id),
     userId: String(dto.senderId ?? dto.sender?.id ?? 'unknown'),
     content: dto.content ?? '',
     time: formatTime(dto.createdAt),
     date: formatDateLabel(dto.createdAt),
+    createdAt: dto.createdAt,
     reactions,
     replies: dto.replyCount ?? 0,
     isEdited: Boolean(dto.isEdited),
+    attachments: attachments.length ? attachments : undefined,
+    poll: dto.poll ? mapPoll(dto.poll) : undefined,
+    readBy: readBy.length ? readBy : undefined,
+    delivered: true,
   };
 }
 

@@ -37,6 +37,7 @@ public class CallDto {
         private String name;
         private String type;
         private String status;
+        private Long hostId;
         private String createdByUsername;
         private LocalDateTime createdAt;
         private LocalDateTime startedAt;

@@ -3,6 +3,7 @@
    1-on-1 voice / video calling remains the only realtime-media surface. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './theme.css';
+import './responsive.css';
 import {
   AppCtx,
   type Accent,
@@ -14,8 +15,11 @@ import {
   type UiNotification,
 } from './context';
 import {
+  formatDateLabel,
+  formatTime,
   mapDirectMessage,
   mapMessage,
+  mapPoll,
   mapUser,
   type Channel,
   type Conversation,
@@ -32,12 +36,13 @@ import {
   publishCallSignal,
 } from './realtime';
 import { useAuthStore } from '@/store/useAppStore';
-import { LoginScreen, CallPanel, IncomingCallOverlay, SettingsModal, TweaksPanel, CallEndBanner } from './Screens';
+import { LoginScreen, CallPanel, IncomingCallOverlay, SettingsModal, TweaksPanel, CallEndBanner, ToastHost } from './Screens';
 import { MainLayout } from './Panels';
 import { ProfileCard } from './People';
 import { AdminConsole } from './admin/AdminConsole';
+import { ScheduledCallsModal } from './ScheduledCalls';
 
-const TWEAK_DEFAULTS = { theme: 'dark' as Theme, accent: 'violet' as Accent };
+const TWEAK_DEFAULTS = { theme: 'light' as Theme, accent: 'gold' as Accent };
 
 export default function InterLynkApp() {
   const [screen, setScreen] = useState<Screen>('login');
@@ -50,7 +55,10 @@ export default function InterLynkApp() {
 
   const [activeChannel, setActiveChannel] = useState<string | null>(null);
   const [activeView, setActiveView] = useState('chat');
-  const [sideOpen, setSideOpen] = useState(true);
+  const isMobileInit = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(max-width: 768px)').matches
+    : false;
+  const [sideOpen, setSideOpen] = useState(!isMobileInit);
   const [rightOpen, setRightOpen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showTweaks, setShowTweaks] = useState(false);
@@ -104,6 +112,18 @@ export default function InterLynkApp() {
     window.addEventListener('message', h);
     window.parent.postMessage({ type: '__edit_mode_available' }, '*');
     return () => window.removeEventListener('message', h);
+  }, []);
+
+  const patchCurrentUser = useCallback((patch: Partial<User>) => {
+    setCurrentUser((cur) => {
+      if (!cur) return cur;
+      const next = { ...cur, ...patch } as User;
+      // Keep usersById in sync so anywhere the user is rendered (sidebar
+      // panel, channel members, profile card) picks up the new avatar
+      // without needing to re-fetch.
+      setUsersById((p) => ({ ...p, [next.id]: { ...p[next.id], ...next } }));
+      return next;
+    });
   }, []);
 
   const registerUsers = useCallback((users: (User | undefined)[]) => {
@@ -186,6 +206,9 @@ export default function InterLynkApp() {
       setActiveChannel(null);
       setThreadMsg(null);
       setProfileUser(null);
+      if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches) {
+        setSideOpen(false);
+      }
       setDmLoading(true);
       api
         .fetchConversation(user.id)
@@ -258,6 +281,9 @@ export default function InterLynkApp() {
       if (id) {
         setActiveDm(null);
         setActiveDmUser(null);
+        if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches) {
+          setSideOpen(false);
+        }
         subscribeToChannel(Number(id));
         loadMessages(id);
         // Pull member roster so names/colours resolve.
@@ -290,14 +316,90 @@ export default function InterLynkApp() {
   }, []);
 
   const sendMessage = useCallback(
-    async (channelId: string, content: string) => {
+    async (channelId: string, content: string, attachments?: import('./data').Attachment[]) => {
       const trimmed = content.trim();
-      if (!trimmed) return;
-      const { message, sender } = await api.sendMessage(channelId, trimmed);
+      // Allow attachment-only messages (e.g. a voice note or image with no caption).
+      if (!trimmed && (!attachments || attachments.length === 0)) return;
+      const me = currentUserRef.current;
+      // Optimistic echo so the sender sees the message instantly with a single
+      // "sent" tick; reconciled to the server row (double tick) once it returns.
+      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (me) {
+        const nowIso = new Date().toISOString();
+        appendMessage(channelId, {
+          id: tempId,
+          userId: me.id,
+          content: trimmed,
+          time: formatTime(nowIso),
+          date: formatDateLabel(nowIso),
+          createdAt: nowIso,
+          attachments,
+          delivered: false,
+        });
+      }
+      try {
+        const { message, sender } = await api.sendMessage(channelId, trimmed, attachments);
+        if (sender) registerUsers([sender]);
+        // Drop the optimistic row and add the real one (deduped if the realtime
+        // broadcast already delivered it).
+        setMessages((prev) => {
+          const arr = (prev[channelId] || []).filter((m) => m.id !== tempId);
+          if (arr.some((m) => m.id === message.id)) return { ...prev, [channelId]: arr };
+          return { ...prev, [channelId]: [...arr, message] };
+        });
+      } catch (e) {
+        // Remove the optimistic row on failure so the composer can restore text.
+        setMessages((prev) => ({
+          ...prev,
+          [channelId]: (prev[channelId] || []).filter((m) => m.id !== tempId),
+        }));
+        throw e;
+      }
+    },
+    [appendMessage, registerUsers]
+  );
+
+  const uploadAttachment = useCallback(
+    (channelId: string, file: File | Blob, filename?: string) =>
+      api.uploadAttachment(channelId, file, filename),
+    []
+  );
+
+  const createPoll = useCallback(
+    async (channelId: string, question: string, options: string[], allowMultiple: boolean) => {
+      const { message, sender } = await api.createPoll(channelId, question, options, allowMultiple);
       if (sender) registerUsers([sender]);
       appendMessage(channelId, message);
     },
     [appendMessage, registerUsers]
+  );
+
+  const votePoll = useCallback(
+    async (channelId: string, pollId: string, optionIds: string[]) => {
+      // Optimistically reflect the caller's own selection; reconcile to the
+      // authoritative poll (with correct counts) from the response.
+      const updated = await api.votePoll(pollId, optionIds);
+      setMessages((prev) => {
+        const arr = prev[channelId];
+        if (!arr) return prev;
+        const next = arr.map((m) => (m.poll && m.poll.id === pollId ? { ...m, poll: updated } : m));
+        return { ...prev, [channelId]: next };
+      });
+    },
+    []
+  );
+
+  // Track which messages we've already reported as read so we don't spam the
+  // backend with duplicate receipts as the user scrolls.
+  const readSentRef = useRef<Set<string>>(new Set());
+  const markMessageRead = useCallback(
+    (channelId: string, messageId: string) => {
+      // Optimistic temp echoes have no server id yet — never report them.
+      if (messageId.startsWith('tmp-') || readSentRef.current.has(messageId)) return;
+      readSentRef.current.add(messageId);
+      api.markMessageRead(channelId, messageId);
+    },
+    []
   );
 
   const reactToMessage = useCallback(
@@ -357,6 +459,46 @@ export default function InterLynkApp() {
         [channelId]: (prev[channelId] || []).filter((m) => m.id !== messageId),
       }));
     };
+    const onReadReceipt = (e: Event) => {
+      const { channelId, userId, messageIds } = (e as CustomEvent).detail as {
+        channelId: string; userId: string | null; messageIds: string[];
+      };
+      if (!userId || !messageIds?.length) return;
+      const ids = new Set(messageIds);
+      setMessages((prev) => {
+        const arr = prev[channelId];
+        if (!arr) return prev;
+        let changed = false;
+        const next = arr.map((m) => {
+          if (!ids.has(m.id)) return m;
+          const readBy = new Set(m.readBy || []);
+          if (readBy.has(userId)) return m;
+          readBy.add(userId);
+          changed = true;
+          return { ...m, readBy: [...readBy] };
+        });
+        return changed ? { ...prev, [channelId]: next } : prev;
+      });
+    };
+    const onPollUpdate = (e: Event) => {
+      const { channelId, poll } = (e as CustomEvent).detail as { channelId: string; poll: any };
+      if (!poll) return;
+      const pollId = String(poll.id);
+      setMessages((prev) => {
+        const arr = prev[channelId];
+        if (!arr) return prev;
+        let changed = false;
+        const next = arr.map((m) => {
+          if (!m.poll || m.poll.id !== pollId) return m;
+          changed = true;
+          // Counts-only broadcast: refresh option totals but preserve THIS user's
+          // own vote selection (the broadcast intentionally omits it).
+          const incoming = mapPoll(poll);
+          return { ...m, poll: { ...incoming, votedOptionIds: m.poll.votedOptionIds } };
+        });
+        return changed ? { ...prev, [channelId]: next } : prev;
+      });
+    };
     const onTyping = (e: Event) => {
       const { channelId, username, isTyping } = (e as CustomEvent).detail;
       if (username === currentUser?.username) return;
@@ -387,7 +529,20 @@ export default function InterLynkApp() {
       const d = (e as CustomEvent).detail;
       setIncomingCall({ ...d, callType: d.callType === 'video' ? 'video' : 'voice' });
     };
-    const onNotif = () => refreshNotifications();
+    const onNotif = (e: Event) => {
+      refreshNotifications();
+      const raw = (e as CustomEvent).detail as { title?: string; content?: string; type?: string } | undefined;
+      if (raw && raw.title) {
+        // Surface the incoming notification as a transient toast — important
+        // for scheduled-call CALL_INVITE notifications so invitees see them
+        // without needing to open the bell popover.
+        window.dispatchEvent(new CustomEvent('il-toast', { detail: {
+          title: raw.title,
+          message: raw.content || '',
+          tone: raw.type === 'CALL_CANCELLED' ? 'warn' : 'info',
+        } }));
+      }
+    };
     const onDm = (e: Event) => {
       const raw = (e as CustomEvent).detail;
       if (raw?.sender) registerUsers([mapUser(raw.sender)]);
@@ -421,6 +576,8 @@ export default function InterLynkApp() {
 
     window.addEventListener('il-message', onMessage);
     window.addEventListener('il-message-deleted', onDeleted);
+    window.addEventListener('il-read-receipt', onReadReceipt);
+    window.addEventListener('il-poll-update', onPollUpdate);
     window.addEventListener('il-typing', onTyping);
     window.addEventListener('il-presence', onPresence);
     window.addEventListener('il-incoming-call', onIncoming);
@@ -431,6 +588,8 @@ export default function InterLynkApp() {
     return () => {
       window.removeEventListener('il-message', onMessage);
       window.removeEventListener('il-message-deleted', onDeleted);
+      window.removeEventListener('il-read-receipt', onReadReceipt);
+      window.removeEventListener('il-poll-update', onPollUpdate);
       window.removeEventListener('il-typing', onTyping);
       window.removeEventListener('il-presence', onPresence);
       window.removeEventListener('il-incoming-call', onIncoming);
@@ -555,8 +714,13 @@ export default function InterLynkApp() {
 
   const startDirectCall = useCallback(
     async (user: User, type: CallType) => {
+      // Critical-path: only the createDirectCall HTTP roundtrip is awaited
+      // (we need the roomId before mounting the panel). joinCall registers
+      // the caller as a backend participant — important for room bookkeeping
+      // but NOT required by the P2P media layer — so it runs in the
+      // background. This trims a full HTTP roundtrip off the time between
+      // click and the "Calling…" UI appearing.
       const session = await api.startDirectCall(Number(user.id), type);
-      await api.joinCall(session.roomId);
       setProfileUser(null);
       setCallSession({
         roomId: session.roomId,
@@ -566,21 +730,60 @@ export default function InterLynkApp() {
         isInitiator: true,
       });
       setInCall(true);
+      api.joinCall(session.roomId).catch((e) => console.warn('joinCall (caller) failed — continuing anyway', e));
+    },
+    []
+  );
+
+  const startScheduledCall = useCallback(
+    async (call: {
+      callType: CallType;
+      title: string;
+      invitees: { userId: number; username: string; displayName?: string; avatarUrl?: string }[];
+    }) => {
+      // 1:1 → reuse the direct-call ring so WebRTC wires up exactly like a
+      // normal call. Group → open a GROUP room the invitees join from their list.
+      if (call.invitees.length === 1) {
+        const inv = call.invitees[0];
+        await startDirectCall(
+          {
+            id: String(inv.userId),
+            name: inv.displayName || inv.username,
+            username: inv.username,
+            avatar: inv.avatarUrl,
+          },
+          call.callType
+        );
+        return;
+      }
+      const session = await api.createGroupCall(call.title, call.callType);
+      await api.joinCall(session.roomId);
+      setCallSession({ roomId: session.roomId, callType: call.callType, title: call.title });
+      setInCall(true);
+    },
+    [startDirectCall]
+  );
+
+  const joinScheduledCall = useCallback(
+    async (call: { roomId: number; callType: CallType; title: string }) => {
+      // Hop straight into the existing room — the backend already created it
+      // when the scheduled call flipped to ACTIVE.
+      setCallSession({ roomId: call.roomId, callType: call.callType, title: call.title });
+      setInCall(true);
+      api.joinCall(call.roomId).catch((e) => console.warn('joinCall (scheduled) failed — continuing anyway', e));
     },
     []
   );
 
   const acceptIncomingCall = useCallback(async () => {
     if (!incomingCall) return;
-    try {
-      await api.joinCall(incomingCall.roomId);
-    } catch (e) {
-      console.error('Failed to join call room', e);
-    }
-    // IMPORTANT: render the CallPanel (and therefore mount useWebRTC's listener)
-    // BEFORE we tell the caller we accepted. Otherwise the caller's offer would
-    // arrive at this client with no handler listening for the webrtc-signal
-    // event and the call would never connect.
+    // Critical path: set the callSession + inCall SYNCHRONOUSLY so the
+    // CallPanel mounts on the next render — no awaits in between. The
+    // backend joinCall runs in the background (not on the media path) and
+    // the call-accepted notification is now sent from inside the CallPanel
+    // via a useEffect, which guarantees the webrtc-signal listener is
+    // registered before we tell the caller to send the offer. This removes
+    // the previous 50 ms setTimeout race entirely.
     setCallSession({
       roomId: incomingCall.roomId,
       callType: incomingCall.callType,
@@ -590,21 +793,7 @@ export default function InterLynkApp() {
     });
     setIncomingCall(null);
     setInCall(true);
-
-    // Notify the caller we accepted. Defer to the next tick so the CallPanel
-    // (and its webrtc-signal listener) is mounted first.
-    const me = useAuthStore.getState().user;
-    if (me) {
-      setTimeout(() => {
-        publishCallSignal({
-          type: 'call-accepted',
-          roomId: incomingCall.roomId,
-          senderUserId: Number(me.id),
-          targetUserId: incomingCall.callerUserId,
-          callType: incomingCall.callType,
-        });
-      }, 50);
-    }
+    api.joinCall(incomingCall.roomId).catch((e) => console.warn('joinCall (callee) failed — continuing anyway', e));
   }, [incomingCall]);
 
   const endCurrentCall = useCallback(async () => {
@@ -625,7 +814,7 @@ export default function InterLynkApp() {
       theme, setTheme,
       accent, setAccent,
       currentUser, usersById, getUser, registerUsers, searchUsers,
-      login, logout, authError,
+      login, logout, authError, patchCurrentUser,
       activeChannel, selectChannel,
       activeView, setActiveView,
       sideOpen, setSideOpen,
@@ -636,6 +825,7 @@ export default function InterLynkApp() {
       showAdmin, setShowAdmin,
       channels, reloadChannels, createChannel,
       messages, messagesLoading, sendMessage, reactToMessage,
+      uploadAttachment, createPoll, votePoll, markMessageRead,
       threadMsg, setThreadMsg,
       typingByChannel, notifyTyping,
       conversations, reloadConversations, dmUnread,
@@ -643,22 +833,23 @@ export default function InterLynkApp() {
       profileUser, openProfile, closeProfile,
       notifications, unreadCount, markAllNotificationsRead,
       inCall, setInCall, callSession,
-      startChannelCall, startDirectCall, endCurrentCall,
+      startChannelCall, startDirectCall, startScheduledCall, joinScheduledCall, endCurrentCall,
       incomingCall, setIncomingCall, acceptIncomingCall,
       callEndReason, setCallEndReason,
       inviteToChannel,
     }),
     [
       screen, theme, accent, currentUser, usersById, getUser, registerUsers, searchUsers,
-      login, logout, authError, activeChannel, selectChannel, activeView,
+      login, logout, authError, patchCurrentUser, activeChannel, selectChannel, activeView,
       sideOpen, rightOpen, showSettings, showTweaks, showNotif, showAdmin,
       channels, reloadChannels, createChannel,
-      messages, messagesLoading, sendMessage, reactToMessage, threadMsg,
+      messages, messagesLoading, sendMessage, reactToMessage,
+      uploadAttachment, createPoll, votePoll, markMessageRead, threadMsg,
       typingByChannel, notifyTyping, conversations, reloadConversations, dmUnread,
       activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm,
       profileUser, openProfile, closeProfile, notifications, unreadCount,
       markAllNotificationsRead,
-      inCall, callSession, startChannelCall, startDirectCall,
+      inCall, callSession, startChannelCall, startDirectCall, startScheduledCall, joinScheduledCall,
       endCurrentCall, incomingCall, acceptIncomingCall,
       callEndReason, inviteToChannel,
     ]
@@ -672,7 +863,9 @@ export default function InterLynkApp() {
       {profileUser && <ProfileCard />}
       {incomingCall && <IncomingCallOverlay />}
       {showTweaks && <TweaksPanel />}
+      {screen === 'app' && <ScheduledCallsModal />}
       <CallEndBanner />
+      <ToastHost />
     </AppCtx.Provider>
   );
 }

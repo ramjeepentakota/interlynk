@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 import os from 'os'
+import { execSync } from 'child_process'
 
 // ── HTTPS ────────────────────────────────────────────────────────────────────
 // Serve the dev/preview server over a self-signed TLS cert by default.
@@ -20,9 +21,56 @@ const useHttps = !(process.env.HTTPS === 'false' || process.env.HTTPS === '0')
 //
 // Pick the first private-range IPv4 (192.168.x, 10.x, 172.16-31.x). Override
 // with HOST=192.168.x.y when needed.
+// Interface name fragments that indicate a virtual/hypervisor adapter.
+// These are never the right address for LAN access or WebRTC peer discovery.
+const VIRTUAL_ADAPTER_PATTERNS = [
+  'virtualbox',
+  'vmware',
+  'vethernet',   // Hyper-V / WSL
+  'wsl',
+  'loopback',
+  'pseudo',
+  'tunnel',
+  'teredo',
+  'isatap',
+]
+
+function isVirtualAdapter(name: string): boolean {
+  const lower = name.toLowerCase()
+  return VIRTUAL_ADAPTER_PATTERNS.some((p) => lower.includes(p))
+}
+
+// On Windows, os.networkInterfaces() uses the adapter SHORT NAME (e.g. "Ethernet 6"),
+// NOT the InterfaceDescription ("VirtualBox Host-Only Ethernet Adapter"). Query
+// Get-NetAdapter to build the name→description map so we can skip virtual adapters
+// that have generic names.
+function getVirtualAdapterNames(): Set<string> {
+  const result = new Set<string>()
+  if (process.platform !== 'win32') return result
+  try {
+    const json = execSync(
+      'powershell -NoProfile -NonInteractive -Command "Get-NetAdapter | Select-Object Name,InterfaceDescription | ConvertTo-Json -Compress"',
+      { timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] }
+    ).toString().trim()
+    const raw: unknown = JSON.parse(json)
+    const list = Array.isArray(raw) ? raw : [raw]
+    for (const a of list as Array<{ Name?: string; InterfaceDescription?: string }>) {
+      if (a?.Name && a?.InterfaceDescription && isVirtualAdapter(a.InterfaceDescription)) {
+        result.add(a.Name)
+      }
+    }
+  } catch {
+    // PowerShell unavailable or failed — fall back to name-only detection
+  }
+  return result
+}
+
+const virtualAdapterNames = getVirtualAdapterNames()
+
 function detectLanIpv4(): string {
   const interfaces = os.networkInterfaces()
   for (const ifaceName of Object.keys(interfaces)) {
+    if (isVirtualAdapter(ifaceName) || virtualAdapterNames.has(ifaceName)) continue
     const addrs = interfaces[ifaceName] || []
     for (const a of addrs) {
       if (a.family !== 'IPv4' || a.internal) continue
@@ -36,7 +84,7 @@ function detectLanIpv4(): string {
       }
     }
   }
-  // Fall back to binding all interfaces if no private IPv4 was found.
+  // Fall back to binding all interfaces if no physical private IPv4 was found.
   return '0.0.0.0'
 }
 

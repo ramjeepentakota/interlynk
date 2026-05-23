@@ -1,12 +1,19 @@
 /* InterLynk TopBar + ChatPanel + Thread + MainLayout — backend-wired. */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ic, type IconName } from './icons';
 import { Avatar, Tip } from './ui';
 import { useApp } from './context';
-import { type Message } from './data';
+import { type Attachment, type Message } from './data';
 import * as api from './api';
 import { WorkspaceRail, Sidebar } from './Sidebar';
-import { DmConversation } from './People';
+import { DmConversation, InlinePeopleSearch } from './People';
+import { openScheduledCalls } from './ScheduledCalls';
+import {
+  Composer,
+  MessageAttachments,
+  PollCard,
+  ReadTicks,
+} from './ChatFeatures';
 
 /* ── TopBar ─────────────────────────────────────────────── */
 export function TopBar() {
@@ -16,12 +23,12 @@ export function TopBar() {
     startChannelCall, unreadCount,
   } = useApp();
   const ch = (channels || []).find((c) => c.id === activeChannel);
-  const title = ch ? ch.name : 'InterLynk';
+  const title = ch ? ch.name : 'Narada';
   const desc = ch ? ch.description : '';
   const isAnnouncement = ch?.type === 'announcement';
 
   return (
-    <div style={{ height: 'var(--topbar-h)', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', paddingLeft: 14, paddingRight: 14, gap: 8, flexShrink: 0, zIndex: 10 }}>
+    <div className="il-topbar" style={{ height: 'var(--topbar-h)', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', paddingLeft: 14, paddingRight: 14, gap: 8, flexShrink: 0, zIndex: 10 }}>
       <Tip label={sideOpen ? 'Hide sidebar' : 'Show sidebar'}>
         <button
           onClick={() => setSideOpen(!sideOpen)}
@@ -40,13 +47,15 @@ export function TopBar() {
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{title}</span>
         {desc && (
           <>
-            <div style={{ width: 1, height: 16, background: 'var(--bd2)' }} />
-            <span style={{ fontSize: 12.5, color: 'var(--t3)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
+            <div data-desc style={{ width: 1, height: 16, background: 'var(--bd2)' }} />
+            <span data-desc style={{ fontSize: 12.5, color: 'var(--t3)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
           </>
         )}
       </div>
 
       <div style={{ flex: 1 }} />
+
+      <InlinePeopleSearch />
 
       <div style={{ width: 1, height: 20, background: 'var(--bd)', margin: '0 2px' }} />
       {!isAnnouncement && activeChannel && (
@@ -74,6 +83,17 @@ export function TopBar() {
           <div style={{ width: 1, height: 20, background: 'var(--bd)', margin: '0 2px' }} />
         </>
       )}
+
+      <Tip label="Scheduled calls">
+        <button
+          onClick={() => openScheduledCalls()}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--t3)')}
+        >
+          <Ic.Calendar s={16} />
+        </button>
+      </Tip>
 
       <Tip label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
         <button
@@ -114,7 +134,7 @@ export function TopBar() {
 function NotificationsPopover() {
   const { notifications, markAllNotificationsRead, setShowNotif } = useApp();
   return (
-    <div className="il-scale-in" style={{ position: 'absolute', top: 'calc(var(--topbar-h) - 4px)', right: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.5)', zIndex: 300 }}>
+    <div className="il-scale-in il-notif-pop" style={{ position: 'absolute', top: 'calc(var(--topbar-h) - 4px)', right: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.5)', zIndex: 300 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--bd)' }}>
         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Notifications</span>
         <button onClick={() => { markAllNotificationsRead(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-link)', fontSize: 12, fontWeight: 600 }}>Mark all read</button>
@@ -142,9 +162,29 @@ const EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '🤔', '😮'
 function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; channelId: string }) {
   const [showActions, setShowActions] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const { setThreadMsg, getUser, currentUser, reactToMessage, openProfile } = useApp();
+  const { setThreadMsg, getUser, currentUser, reactToMessage, openProfile, markMessageRead, votePoll } = useApp();
   const user = getUser(msg.userId);
   const isMe = currentUser ? msg.userId === currentUser.id : false;
+  // "Seen" once anyone other than the sender has a read receipt for this message.
+  const seenByOthers = (msg.readBy || []).some((id) => id !== msg.userId);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Report a read receipt the first time someone else's message scrolls into view.
+  useEffect(() => {
+    if (isMe || !rootRef.current) return;
+    const el = rootRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          markMessageRead(channelId, msg.id);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.6 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isMe, channelId, msg.id, markMessageRead]);
 
   const react = (emoji: string) => {
     reactToMessage(channelId, msg.id, emoji);
@@ -153,12 +193,13 @@ function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; 
 
   return (
     <div
+      ref={rootRef}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); setShowPicker(false); }}
       style={{ display: 'flex', gap: 12, padding: `${isFirst ? '12px' : '2px'} 16px`, position: 'relative', borderRadius: 4, transition: 'background .12s', background: showActions ? 'var(--bg-hover)' : 'transparent' }}
     >
       {isFirst ? (
-        <div style={{ flexShrink: 0, marginTop: 1, cursor: 'pointer' }} onClick={() => openProfile(user)}><Avatar user={user} size={36} /></div>
+        <div style={{ flexShrink: 0, marginTop: 1, cursor: 'pointer' }} onClick={() => openProfile(user)}><Avatar user={user} size={36} showStatus /></div>
       ) : (
         <div style={{ width: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {showActions && <span style={{ fontSize: 10, color: 'var(--t3)' }}>{msg.time}</span>}
@@ -177,16 +218,34 @@ function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; 
           </div>
         )}
 
-        <div style={{ fontSize: 14.5, color: 'var(--t1)', lineHeight: 1.55, wordBreak: 'break-word', fontWeight: 400 }}>
-          {msg.content.split(/(@\w+)/g).map((part, i) =>
-            /^@\w+/.test(part) ? (
-              <span key={i} style={{ background: 'var(--primary-dim)', color: 'var(--primary-l)', borderRadius: 4, padding: '0 3px', fontWeight: 600 }}>{part}</span>
-            ) : (
-              part
-            )
-          )}
-          {msg.isEdited && <span style={{ fontSize: 11, color: 'var(--t3)', marginLeft: 4 }}>(edited)</span>}
-        </div>
+        {/* For poll messages the question is shown inside the PollCard, so skip the text body. */}
+        {msg.content && !msg.poll && (
+          <div style={{ fontSize: 14.5, color: 'var(--t1)', lineHeight: 1.55, wordBreak: 'break-word', fontWeight: 400 }}>
+            {msg.content.split(/(@\w+)/g).map((part, i) =>
+              /^@\w+/.test(part) ? (
+                <span key={i} style={{ background: 'var(--primary-dim)', color: 'var(--primary-l)', borderRadius: 4, padding: '0 3px', fontWeight: 600 }}>{part}</span>
+              ) : (
+                part
+              )
+            )}
+            {msg.isEdited && <span style={{ fontSize: 11, color: 'var(--t3)', marginLeft: 4 }}>(edited)</span>}
+          </div>
+        )}
+
+        {msg.poll && (
+          <PollCard poll={msg.poll} onVote={(optionIds) => votePoll(channelId, msg.poll!.id, optionIds)} />
+        )}
+
+        {msg.attachments && msg.attachments.length > 0 && (
+          <MessageAttachments attachments={msg.attachments} />
+        )}
+
+        {isMe && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, justifyContent: 'flex-start' }}>
+            <ReadTicks delivered={msg.delivered !== false} seen={seenByOthers} />
+            {seenByOthers && <span style={{ fontSize: 10.5, color: 'var(--ok)', fontWeight: 600 }}>Seen</span>}
+          </div>
+        )}
 
         {msg.reactions && msg.reactions.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
@@ -265,117 +324,41 @@ function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; 
   );
 }
 
-/* ── Message Input ───────────────────────────────────────── */
+/* ── Message Input — thin wrapper over the shared Composer ── */
 function MessageInput({ channelId }: { channelId: string }) {
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const [showEmoji, setShowEmoji] = useState(false);
-  const { sendMessage, channels, notifyTyping, typingByChannel, currentUser } = useApp();
+  const { sendMessage, uploadAttachment, createPoll, channels, notifyTyping, typingByChannel, currentUser } = useApp();
   const ch = (channels || []).find((c) => c.id === channelId);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const locked = Boolean(ch?.locked);
   const typers = (typingByChannel[channelId] || []).filter((u) => u !== currentUser?.username);
 
-  const send = async (e?: { preventDefault: () => void }) => {
-    e && e.preventDefault();
-    if (!text.trim() || sending) return;
-    const content = text.trim();
-    setText('');
-    setSending(true);
-    try {
-      await sendMessage(channelId, content);
-      notifyTyping(channelId, false);
-    } catch {
-      setText(content); // restore on failure
-    } finally {
-      setSending(false);
-      setTimeout(() => ref.current?.focus(), 30);
-    }
-  };
-
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
-  const onType = (v: string) => {
-    setText(v);
-    notifyTyping(channelId, true);
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => notifyTyping(channelId, false), 2500);
-  };
-
-  const placeholder = ch?.locked ? 'This channel is read-only' : `Message #${ch?.name || channelId}…`;
+  const typingIndicator = (
+    <div style={{ height: 18, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, paddingLeft: 8 }}>
+      {typers.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 3 }}>
+            <span className="il-typing-dot" />
+            <span className="il-typing-dot" />
+            <span className="il-typing-dot" />
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--t3)' }}>
+            {typers.length === 1 ? `${typers[0]} is typing…` : `${typers.length} people are typing…`}
+          </span>
+        </>
+      )}
+    </div>
+  );
 
   return (
-    <div style={{ padding: '0 14px 14px', flexShrink: 0 }}>
-      <div style={{ height: 18, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 4 }}>
-        {typers.length > 0 && (
-          <>
-            <div style={{ display: 'flex', gap: 3 }}>
-              <span className="il-typing-dot" />
-              <span className="il-typing-dot" />
-              <span className="il-typing-dot" />
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--t3)' }}>
-              {typers.length === 1 ? `${typers[0]} is typing…` : `${typers.length} people are typing…`}
-            </span>
-          </>
-        )}
-      </div>
-
-      <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 10px' }}>
-          <textarea
-            ref={ref}
-            value={text}
-            onChange={(e) => { onType(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'; }}
-            onKeyDown={onKey}
-            placeholder={placeholder}
-            disabled={ch?.locked || sending}
-            rows={1}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 14.5, fontFamily: "'DM Sans',sans-serif", resize: 'none', minHeight: 22, maxHeight: 150, overflowY: 'auto', lineHeight: 1.55 }}
-          />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <div style={{ position: 'relative' }}>
-              <Tip label="Emoji">
-                <button
-                  onClick={() => setShowEmoji(!showEmoji)}
-                  style={{ background: showEmoji ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: showEmoji ? 'var(--primary)' : 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
-                >
-                  <Ic.Smile s={18} />
-                </button>
-              </Tip>
-              {showEmoji && (
-                <div className="il-scale-in" style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 10, zIndex: 200, boxShadow: '0 8px 32px rgba(0,0,0,.5)', display: 'flex', flexWrap: 'wrap', gap: 5, width: 220 }}>
-                  {['😀', '😂', '🥰', '🤩', '😎', '🤔', '😮', '😢', '🎉', '🔥', '👍', '❤️', '✅', '🚀', '💯', '🙌', '⚡', '🎨', '💡', '🤯'].map((em) => (
-                    <button
-                      key={em}
-                      onClick={() => { setText((t) => t + em); setShowEmoji(false); ref.current?.focus(); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 3, borderRadius: 4, lineHeight: 1 }}
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => send()}
-              disabled={!text.trim() || ch?.locked || sending}
-              style={{ width: 32, height: 32, borderRadius: 'var(--r)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', background: text.trim() ? 'var(--primary)' : 'var(--bg-active)', color: text.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}
-            >
-              {sending ? <Ic.Loader s={14} className="il-spin" /> : <Ic.Send s={15} c="currentColor" />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Composer
+      resetKey={channelId}
+      placeholder={locked ? 'This channel is read-only' : `Message #${ch?.name || channelId}…`}
+      disabled={locked}
+      onSend={(textVal, attachments) => sendMessage(channelId, textVal, attachments)}
+      uploadFile={locked ? undefined : (file, filename) => uploadAttachment(channelId, file, filename)}
+      onCreatePoll={locked ? undefined : (q, o, m) => createPoll(channelId, q, o, m)}
+      onTyping={(t) => notifyTyping(channelId, t)}
+      typingIndicator={typingIndicator}
+    />
   );
 }
 
@@ -419,12 +402,13 @@ export function ChatPanel() {
 
   if (!channelId) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14, padding: 32 }}>
-        <div style={{ width: 64, height: 64, borderRadius: 'var(--r-xl)', background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14, padding: 32, overflow: 'hidden' }}>
+        <div className="il-mandala" style={{ width: 520, height: 520, opacity: .045 }} />
+        <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 'var(--r-xl)', background: 'var(--primary-dim)', border: '1px solid var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Ic.Msg s={28} c="var(--primary)" />
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 6 }}>Welcome to InterLynk</div>
+        <div style={{ position: 'relative', textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 6 }}>Welcome to Narada</div>
           <div style={{ fontSize: 14, color: 'var(--t3)', maxWidth: 340, lineHeight: 1.6 }}>Select a channel from the sidebar to start collaborating with your team.</div>
         </div>
       </div>
@@ -523,7 +507,7 @@ function ThreadPanel() {
   };
 
   return (
-    <div className="il-slide-l" style={{ width: 'var(--right-w)', background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0 }}>
+    <div className="il-slide-l il-thread" style={{ width: 'var(--right-w)', background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0 }}>
       <div style={{ padding: '0 14px', height: 'var(--topbar-h)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--bd)' }}>
         <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "'Outfit',sans-serif" }}>Thread</span>
         <button
@@ -592,22 +576,53 @@ export function RightSidebar() {
 }
 
 export function MainLayout() {
-  const { activeDm } = useApp();
+  const { activeDm, sideOpen, setSideOpen } = useApp();
+  // Mobile-only backdrop: shown only when sidebar is open AND viewport is small.
+  // (Sidebar is overlaid via responsive.css media queries.)
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-width: 768px)').matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    if (mql.addEventListener) mql.addEventListener('change', onChange);
+    else mql.addListener(onChange);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', onChange);
+      else mql.removeListener(onChange);
+    };
+  }, []);
+
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden' }}>
+    <div
+      className="il-app"
+      data-mobile-sideopen={sideOpen ? 'true' : 'false'}
+      style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden' }}
+    >
       <WorkspaceRail />
       <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-main)' }}>
+      {isMobile && sideOpen && (
+        <div
+          className="il-mobile-backdrop"
+          onClick={() => setSideOpen(false)}
+          aria-hidden
+        />
+      )}
+      <div className="il-main-bg" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        {/* TopBar (notifications, scheduled calls, theme, settings) stays
+            mounted for every surface — opening a DM no longer hides the
+            global controls. */}
+        <TopBar />
         {activeDm ? (
           <DmConversation />
         ) : (
-          <>
-            <TopBar />
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-              <ChatPanel />
-              <RightSidebar />
-            </div>
-          </>
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', minWidth: 0 }}>
+            <ChatPanel />
+            <RightSidebar />
+          </div>
         )}
       </div>
     </div>

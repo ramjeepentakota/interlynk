@@ -298,8 +298,12 @@ public class CallService {
                 .findActiveParticipantsWithUser(room.getId());
         
         String createdByUsername = null;
+        Long hostId = null;
         try {
-            createdByUsername = room.getCreatedBy() != null ? room.getCreatedBy().getUsername() : null;
+            if (room.getCreatedBy() != null) {
+                createdByUsername = room.getCreatedBy().getUsername();
+                hostId = room.getCreatedBy().getId();
+            }
         } catch (Exception e) {
             log.warn("Could not load createdBy for room {}", room.getId());
         }
@@ -309,6 +313,7 @@ public class CallService {
                 .name(room.getName())
                 .type(room.getType().name())
                 .status(room.getIsActive() ? "ACTIVE" : "ENDED")
+                .hostId(hostId)
                 .createdByUsername(createdByUsername)
                 .createdAt(room.getCreatedAt())
                 .startedAt(room.getStartedAt())

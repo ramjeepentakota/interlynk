@@ -9,6 +9,7 @@ import { Ic } from './icons';
 import { Avatar, Tip, useHover } from './ui';
 import { useApp } from './context';
 import { STATUS_COLORS, type User } from './data';
+import { Composer } from './ChatFeatures';
 
 /* ── Reusable user search type-ahead ─────────────────────── */
 export function UserSearchBox({
@@ -91,12 +92,70 @@ function UserRow({ user, onClick, trailing }: { user: User; onClick: () => void;
   );
 }
 
+/* ── Inline people search (no modal — typeahead with dropdown) ── */
+export function InlinePeopleSearch({ width = 220, placeholder = 'Search people…' }: { width?: number | string; placeholder?: string }) {
+  const { searchUsers, openDm } = useApp();
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    const query = q.trim();
+    if (!query) { setResults([]); setLoading(false); return; }
+    setLoading(true);
+    timer.current = setTimeout(() => {
+      searchUsers(query).then(setResults).catch(() => setResults([])).finally(() => setLoading(false));
+    }, 250);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [q, searchUsers]);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setFocused(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const open = focused && q.trim().length > 0;
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', width }}>
+      <div style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--t3)', display: 'flex', pointerEvents: 'none' }}>
+        <Ic.Search s={14} />
+      </div>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        onFocus={() => setFocused(true)}
+        placeholder={placeholder}
+        style={{ width: '100%', height: 32, padding: '0 10px 0 30px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+      />
+      {open && (
+        <div className="il-scale-in" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 280, maxWidth: 'calc(100vw - 24px)', maxHeight: 320, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.45)', padding: 6, zIndex: 200 }}>
+          {loading && <div style={{ padding: '10px 8px', fontSize: 12.5, color: 'var(--t3)' }}>Searching…</div>}
+          {!loading && results.length === 0 && (
+            <div style={{ padding: '10px 8px', fontSize: 12.5, color: 'var(--t3)' }}>No people found.</div>
+          )}
+          {results.map((u) => (
+            <UserRow key={u.id} user={u} onClick={() => { openDm(u); setQ(''); setFocused(false); }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── New-message modal (pick a person → open DM) ─────────── */
 export function NewMessageModal({ onClose }: { onClose: () => void }) {
   const { openDm } = useApp();
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }} onClick={onClose}>
-      <div className="il-scale-in" onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 16, boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+      <div className="il-scale-in il-modal-card il-newmsg-modal" onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 16, boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>New message</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 4, borderRadius: 6, display: 'flex' }}>
@@ -135,7 +194,7 @@ export function ProfileCard() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5200, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={closeProfile}>
-      <div className="il-scale-in" onClick={(e) => e.stopPropagation()} style={{ width: 340, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.65)' }}>
+      <div className="il-scale-in il-modal-card il-profile-card" onClick={(e) => e.stopPropagation()} style={{ width: 340, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.65)' }}>
         <div style={{ height: 84, background: 'linear-gradient(135deg,var(--primary) 0%,#a855f7 100%)', position: 'relative' }}>
           <button onClick={closeProfile} style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,.3)', border: 'none', cursor: 'pointer', color: '#fff', padding: 5, borderRadius: 6, display: 'flex' }}>
             <Ic.X s={15} />
@@ -179,31 +238,13 @@ export function DmConversation() {
     activeDm, activeDmUser, dmMessages, dmLoading, sendDm, currentUser,
     startDirectCall, openProfile,
   } = useApp();
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const list = (activeDm && dmMessages[activeDm]) || [];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [list.length, activeDm]);
-
-  const send = useCallback(async () => {
-    const content = text.trim();
-    if (!content || sending) return;
-    setText('');
-    setSending(true);
-    try {
-      await sendDm(content);
-    } catch {
-      setText(content);
-    } finally {
-      setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 30);
-    }
-  }, [text, sending, sendDm]);
 
   if (!activeDmUser) return null;
   const other = activeDmUser;
@@ -271,27 +312,12 @@ export function DmConversation() {
         <div ref={bottomRef} style={{ height: 8 }} />
       </div>
 
-      {/* Input */}
-      <div style={{ padding: '0 14px 14px', flexShrink: 0 }}>
-        <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', display: 'flex', alignItems: 'flex-end', gap: 8, padding: '8px 10px' }}>
-          <textarea
-            ref={inputRef}
-            value={text}
-            onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'; }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={`Message ${other.name}…`}
-            rows={1}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 14.5, fontFamily: "'DM Sans',sans-serif", resize: 'none', minHeight: 22, maxHeight: 150, lineHeight: 1.55 }}
-          />
-          <button
-            onClick={send}
-            disabled={!text.trim() || sending}
-            style={{ width: 32, height: 32, borderRadius: 'var(--r)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', background: text.trim() ? 'var(--primary)' : 'var(--bg-active)', color: text.trim() ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            {sending ? <Ic.Loader s={14} className="il-spin" /> : <Ic.Send s={15} />}
-          </button>
-        </div>
-      </div>
+      {/* Input — shared Composer (emoji, GIF, dictation, multilingual). */}
+      <Composer
+        resetKey={activeDm}
+        placeholder={`Message ${other.name}…`}
+        onSend={(textVal) => sendDm(textVal)}
+      />
     </div>
   );
 }

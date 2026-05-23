@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Button, Avatar, Tooltip, Badge } from '@/components/ui';
 import { useCallStore, useAuthStore } from '@/store/useAppStore';
 import { useWebRTC } from '@/hooks/useWebRTC';
+import { useAudioLevel } from '@/hooks/useAudioLevel';
 import { callApi } from '@/api/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -71,18 +72,29 @@ export function CallPanel() {
   const callType: 'voice' | 'video' =
     currentCall && (currentCall as any).callType === 'voice' ? 'voice' : 'video';
 
-  // Determine if we are the initiator by checking if the call was just created by us
+  // Determine if we are the initiator. Backend ships `hostId` as a number; coerce
+  // both sides to strings so the comparison is type-agnostic. Falls back to the
+  // username comparison if `hostId` is unavailable for any reason.
   const isInitiator = React.useMemo(() => {
-    return currentCall?.hostId === String(user?.id);
+    if (!currentCall || !user) return false;
+    if (currentCall.hostId != null) {
+      return String(currentCall.hostId) === String(user.id);
+    }
+    const createdBy = (currentCall as any).createdByUsername;
+    return createdBy != null && createdBy === user.username;
   }, [currentCall, user]);
 
-  // Find the target user for 1-on-1 signaling
+  // Find the target user for 1-on-1 signaling. The caller's `currentCall.participants`
+  // is empty at the moment `call-accepted` arrives (the room snapshot is from before
+  // either side joined), so fall back to the `remoteUser` the caller stashed when
+  // dialing — that is always the dial target.
   const targetUserId = React.useMemo(() => {
     if (!currentCall || !user) return null;
-    // In a direct call, the target is the member who isn't us
     const otherMember = currentCall.participants?.find(p => String(p.userId) !== String(user.id));
-    return otherMember ? otherMember.userId : null;
-  }, [currentCall, user]);
+    if (otherMember) return otherMember.userId;
+    if (remoteUser?.id) return remoteUser.id;
+    return null;
+  }, [currentCall, user, remoteUser]);
 
   // ── WebRTC ──────────────────────────────────────────────────────────────────
   const {
@@ -105,6 +117,13 @@ export function CallPanel() {
     stompClient: window.__stompClient ?? null,
     isInitiator: isInitiator,
   });
+
+  // ── Active speaker detection ────────────────────────────────────────────────
+  const { isSpeaking: localSpeaking } = useAudioLevel(localStream);
+  const { isSpeaking: remoteSpeaking } = useAudioLevel(remoteStream);
+  // Suppress local speaking ring while muted — the track is silent but a tiny
+  // amount of noise can still exceed the threshold in some browsers.
+  const localActiveSpeaker = localSpeaking && !isMuted;
 
   // ── WebRTC Signaling & Initialization ──────────────────────────────────────────
   React.useEffect(() => {
@@ -142,6 +161,10 @@ export function CallPanel() {
   // Bind local video stream
   const localVideoRef = React.useRef<HTMLVideoElement>(null);
   const remoteVideoRef = React.useRef<HTMLVideoElement>(null);
+  // Dedicated <audio> sink for voice calls. VoiceOnlyGrid renders no media
+  // element, so without this the remote audio track has no output and the
+  // caller hears nothing — the source of the "one-way audio" symptom.
+  const remoteAudioRef = React.useRef<HTMLAudioElement>(null);
 
   React.useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -152,6 +175,9 @@ export function CallPanel() {
   React.useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+    }
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
 
@@ -379,9 +405,22 @@ export function CallPanel() {
               participants={participants}
               currentUser={user}
               isVideoOn={isVideoOn}
+              localSpeaking={localActiveSpeaker}
+              remoteSpeaking={remoteSpeaking}
             />
           ) : (
-            <VoiceOnlyGrid participants={participants} currentUser={user} />
+            <>
+              <VoiceOnlyGrid
+                participants={participants}
+                currentUser={user}
+                localSpeaking={localActiveSpeaker}
+                remoteSpeaking={remoteSpeaking}
+              />
+              {/* Hidden audio sink — required for voice calls because the
+                  VoiceOnlyGrid renders no <audio>/<video> element of its own.
+                  Without this the remote MediaStream has nowhere to play. */}
+              <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+            </>
           )}
         </div>
 
@@ -395,7 +434,12 @@ export function CallPanel() {
               exit={{ width: 0, opacity: 0 }}
               className="absolute right-0 top-0 bottom-0 bg-[#161b22] border-l border-white/10 overflow-hidden"
             >
-              <ParticipantsPanel participants={participants} currentUserId={user?.id || ''} />
+              <ParticipantsPanel
+                participants={participants}
+                currentUserId={user?.id || ''}
+                localSpeaking={localActiveSpeaker}
+                remoteSpeaking={remoteSpeaking}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -509,6 +553,23 @@ export function CallPanel() {
 
 // ─── Video Grid ────────────────────────────────────────────────────────────────
 
+// Small animated equalizer bars shown in the name tag when someone is speaking.
+function EqualizerBars() {
+  return (
+    <span className="inline-flex items-end gap-[2px] h-3 ml-1.5">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] rounded-full bg-green-400"
+          animate={{ height: ['4px', '10px', '4px'] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
+          style={{ display: 'inline-block' }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function VideoGrid({
   localStream,
   remoteStream,
@@ -517,6 +578,8 @@ function VideoGrid({
   participants,
   currentUser,
   isVideoOn,
+  localSpeaking,
+  remoteSpeaking,
 }: {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -525,13 +588,24 @@ function VideoGrid({
   participants: Participant[];
   currentUser: any;
   isVideoOn: boolean;
+  localSpeaking: boolean;
+  remoteSpeaking: boolean;
 }) {
   const hasRemote = !!remoteStream;
 
   return (
     <div className={cn('grid gap-3 h-full', hasRemote ? 'grid-cols-2' : 'grid-cols-1')}>
       {/* Local stream */}
-      <div className="relative rounded-2xl overflow-hidden bg-[#1c2128] border border-white/10 flex items-center justify-center min-h-[200px]">
+      <motion.div
+        animate={localSpeaking ? {
+          boxShadow: ['0 0 0 0px rgba(74,222,128,0.0)', '0 0 0 3px rgba(74,222,128,0.7)', '0 0 0 3px rgba(74,222,128,0.7)'],
+        } : {
+          boxShadow: '0 0 0 0px rgba(74,222,128,0.0)',
+        }}
+        transition={{ duration: 0.2 }}
+        className="relative rounded-2xl overflow-hidden bg-[#1c2128] border border-white/10 flex items-center justify-center min-h-[200px]"
+        style={localSpeaking ? { borderColor: 'rgba(74,222,128,0.7)' } : undefined}
+      >
         {isVideoOn && localStream ? (
           <video
             ref={localVideoRef}
@@ -548,14 +622,24 @@ function VideoGrid({
             <p className="text-sm text-white/60">Camera off</p>
           </div>
         )}
-        <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md text-xs font-medium text-white bg-black/50 backdrop-blur-sm">
+        <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md text-xs font-medium text-white bg-black/50 backdrop-blur-sm flex items-center">
           You
+          {localSpeaking && <EqualizerBars />}
         </div>
-      </div>
+      </motion.div>
 
       {/* Remote stream */}
       {hasRemote && (
-        <div className="relative rounded-2xl overflow-hidden bg-[#1c2128] border border-white/10 flex items-center justify-center min-h-[200px]">
+        <motion.div
+          animate={remoteSpeaking ? {
+            boxShadow: ['0 0 0 0px rgba(74,222,128,0.0)', '0 0 0 3px rgba(74,222,128,0.7)', '0 0 0 3px rgba(74,222,128,0.7)'],
+          } : {
+            boxShadow: '0 0 0 0px rgba(74,222,128,0.0)',
+          }}
+          transition={{ duration: 0.2 }}
+          className="relative rounded-2xl overflow-hidden bg-[#1c2128] border border-white/10 flex items-center justify-center min-h-[200px]"
+          style={remoteSpeaking ? { borderColor: 'rgba(74,222,128,0.7)' } : undefined}
+        >
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -563,11 +647,12 @@ function VideoGrid({
             className="w-full h-full object-cover"
           />
           {participants.length > 0 && (
-            <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md text-xs font-medium text-white bg-black/50 backdrop-blur-sm">
+            <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md text-xs font-medium text-white bg-black/50 backdrop-blur-sm flex items-center">
               {participants.find((p) => p.userId !== String(currentUser?.id))?.displayName || 'Remote'}
+              {remoteSpeaking && <EqualizerBars />}
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Waiting state */}
@@ -587,36 +672,80 @@ function VideoGrid({
 
 // ─── Voice-Only Grid ───────────────────────────────────────────────────────────
 
-function VoiceOnlyGrid({ participants, currentUser }: { participants: Participant[]; currentUser: any }) {
+function VoiceOnlyGrid({
+  participants,
+  currentUser,
+  localSpeaking,
+  remoteSpeaking,
+}: {
+  participants: Participant[];
+  currentUser: any;
+  localSpeaking: boolean;
+  remoteSpeaking: boolean;
+}) {
   const allParticipants = participants.length > 0
     ? participants
     : [{ id: 'me', userId: String(currentUser?.id), username: currentUser?.username || '', displayName: currentUser?.displayName || 'You', isMuted: false, isVideoEnabled: false, isScreenSharing: false }];
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-8 h-full content-center">
-      {allParticipants.map((p) => (
-        <div key={p.id} className="flex flex-col items-center gap-3">
-          <div
-            className="relative w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', boxShadow: '0 0 0 3px rgba(255,255,255,0.1)' }}
-          >
-            {p.displayName.charAt(0).toUpperCase()}
-            {p.isMuted && (
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-red-500 flex items-center justify-center border-2 border-[#0d1117]">
-                <MicOff className="w-3 h-3 text-white" />
-              </div>
-            )}
+      {allParticipants.map((p) => {
+        const isLocal = String(p.userId) === String(currentUser?.id);
+        const speaking = isLocal ? localSpeaking : remoteSpeaking;
+
+        return (
+          <div key={p.id} className="flex flex-col items-center gap-3">
+            <motion.div
+              animate={speaking ? {
+                boxShadow: [
+                  '0 0 0 3px rgba(255,255,255,0.1)',
+                  '0 0 0 6px rgba(74,222,128,0.55)',
+                  '0 0 0 6px rgba(74,222,128,0.55)',
+                ],
+              } : {
+                boxShadow: '0 0 0 3px rgba(255,255,255,0.1)',
+              }}
+              transition={{ duration: 0.2 }}
+              className="relative w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+            >
+              {p.displayName.charAt(0).toUpperCase()}
+              {p.isMuted && (
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-red-500 flex items-center justify-center border-2 border-[#0d1117]">
+                  <MicOff className="w-3 h-3 text-white" />
+                </div>
+              )}
+            </motion.div>
+
+            <div className="flex items-center gap-1.5">
+              <p className={cn(
+                'text-sm font-medium transition-colors duration-150',
+                speaking ? 'text-white' : 'text-white/80'
+              )}>
+                {p.displayName}
+              </p>
+              {speaking && <EqualizerBars />}
+            </div>
           </div>
-          <p className="text-sm font-medium text-white/80">{p.displayName}</p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 // ─── Participants Panel ────────────────────────────────────────────────────────
 
-function ParticipantsPanel({ participants, currentUserId }: { participants: Participant[]; currentUserId: string }) {
+function ParticipantsPanel({
+  participants,
+  currentUserId,
+  localSpeaking,
+  remoteSpeaking,
+}: {
+  participants: Participant[];
+  currentUserId: string;
+  localSpeaking: boolean;
+  remoteSpeaking: boolean;
+}) {
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-white/10">
@@ -626,27 +755,48 @@ function ParticipantsPanel({ participants, currentUserId }: { participants: Part
         {participants.length === 0 ? (
           <p className="p-4 text-center text-white/40 text-sm">No participants yet</p>
         ) : (
-          participants.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-                {p.displayName.charAt(0).toUpperCase()}
+          participants.map((p) => {
+            const isLocal = String(p.userId) === String(currentUserId);
+            const speaking = isLocal ? localSpeaking : remoteSpeaking;
+
+            return (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                {/* Avatar with green speaking dot */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
+                    {p.displayName.charAt(0).toUpperCase()}
+                  </div>
+                  {speaking && (
+                    <motion.div
+                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-[#161b22]"
+                      animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    'text-sm font-medium truncate transition-colors duration-150',
+                    speaking ? 'text-white' : 'text-white/80'
+                  )}>
+                    {p.displayName}
+                    {isLocal && <span className="text-white/40 ml-1">(You)</span>}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {speaking && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+                  {p.isMuted && <MicOff className="w-3.5 h-3.5 text-red-400" />}
+                  {!p.isVideoEnabled && <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+                  {p.isScreenSharing && <Monitor className="w-3.5 h-3.5 text-indigo-400" />}
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {p.displayName}
-                  {p.userId === currentUserId && <span className="text-white/40 ml-1">(You)</span>}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {p.isMuted && <MicOff className="w-3.5 h-3.5 text-red-400" />}
-                {!p.isVideoEnabled && <VideoOff className="w-3.5 h-3.5 text-red-400" />}
-                {p.isScreenSharing && <Monitor className="w-3.5 h-3.5 text-indigo-400" />}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

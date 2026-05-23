@@ -18,11 +18,15 @@ import {
   mapMessage,
   mapConversation,
   mapDirectMessage,
+  mapAttachment,
+  mapPoll,
   type User,
   type Channel,
   type Message,
   type Conversation,
   type DirectMessageItem,
+  type Attachment,
+  type Poll,
 } from './data';
 
 export interface AuthResult {
@@ -76,6 +80,13 @@ export async function searchUsers(query: string): Promise<User[]> {
 
 export async function updateProfile(displayName: string): Promise<User> {
   const res = await authApi.updateProfile({ displayName });
+  return mapUser(res.data);
+}
+
+/** Persist a new avatar (already a URL or a data: URL). Returns the updated
+ *  user so the caller can refresh local state and broadcast the change. */
+export async function updateAvatar(avatarUrl: string): Promise<User> {
+  const res = await authApi.updateProfile({ avatarUrl });
   return mapUser(res.data);
 }
 
@@ -138,13 +149,78 @@ export async function fetchMessages(
 
 export async function sendMessage(
   channelId: string,
-  content: string
+  content: string,
+  attachments?: Attachment[]
 ): Promise<{ message: Message; sender?: User }> {
-  const res = await messageApi.sendMessage(channelId, content);
+  const payload = attachments && attachments.length > 0
+    ? attachments.map((a) => ({
+        filename: a.fileName,
+        url: a.fileUrl,
+        size: a.fileSize,
+        fileType: a.fileType,
+      }))
+    : undefined;
+  const res = await messageApi.sendMessage(channelId, content, undefined, payload);
   return {
     message: mapMessage(res.data),
     sender: res.data.sender ? mapUser(res.data.sender) : undefined,
   };
+}
+
+/** Upload a single file to a channel. Returns the persisted attachment record
+ *  the backend will accept inside a subsequent sendMessage call. */
+export async function uploadAttachment(
+  channelId: string,
+  file: File | Blob,
+  filename?: string
+): Promise<Attachment> {
+  const form = new FormData();
+  // FormData needs a real filename for the multipart "filename=" header,
+  // which the backend uses as the original-name fallback when storing the file.
+  const f =
+    file instanceof File ? file : new File([file], filename || 'upload.bin', { type: (file as Blob).type });
+  form.append('file', f, filename || f.name);
+  const res = await messageApi.uploadAttachment(channelId, form);
+  const data = res.data || {};
+  return mapAttachment({
+    id: data.id,
+    fileName: data.fileName || f.name,
+    fileUrl: data.fileUrl || '',
+    fileType: data.fileType || f.type || 'application/octet-stream',
+    fileSize: data.fileSize ?? f.size ?? 0,
+  });
+}
+
+/* ── Polls ───────────────────────────────────────────────── */
+
+export async function createPoll(
+  channelId: string,
+  question: string,
+  options: string[],
+  allowMultiple: boolean
+): Promise<{ message: Message; sender?: User }> {
+  const res = await apiClient.post(`/api/channels/${channelId}/polls`, { question, options, allowMultiple });
+  return {
+    message: mapMessage(res.data),
+    sender: res.data.sender ? mapUser(res.data.sender) : undefined,
+  };
+}
+
+export async function votePoll(pollId: string, optionIds: string[]): Promise<Poll> {
+  const res = await apiClient.post(`/api/polls/${pollId}/vote`, { optionIds: optionIds.map((id) => Number(id)) });
+  return mapPoll(res.data);
+}
+
+/** Mark messages in a channel as read up to (and including) the given message,
+ *  using the existing ReadReceiptService endpoint. Best-effort. The backend
+ *  backfills receipts for everything older than this marker and broadcasts a
+ *  'messages_read' delta to the channel topic. */
+export async function markMessageRead(channelId: string, messageId: string): Promise<void> {
+  try {
+    await apiClient.post(`/api/channels/${channelId}/read`, { lastMessageId: Number(messageId) });
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function editMessage(messageId: string, content: string): Promise<Message> {

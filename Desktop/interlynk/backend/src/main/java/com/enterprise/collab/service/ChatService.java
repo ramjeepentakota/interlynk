@@ -37,6 +37,9 @@ public class ChatService {
     // no new voice rooms are ever created from this service.
     private final CallRoomRepository callRoomRepository;
     private final AttachmentRepository attachmentRepository;
+    private final MessageReadReceiptRepository readReceiptRepository;
+    private final PollRepository pollRepository;
+    private final PollVoteRepository pollVoteRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final AuditService auditService;
     private final MentionService mentionService;
@@ -566,7 +569,7 @@ public class ChatService {
         Page<Message> messagePage = messageRepository.findByChannelId(channelId, pageable);
         
         List<ChatDto.MessageResponse> messages = messagePage.getContent().stream()
-                .map(this::mapToMessageResponse)
+                .map(m -> mapToMessageResponse(m, user.getId()))
                 .collect(Collectors.toList());
         
         List<ChatDto.MessageResponse> modifiableMessages = new java.util.ArrayList<>(messages);
@@ -785,10 +788,17 @@ public class ChatService {
             reply.getAttachments().clear();
             messageRepository.delete(reply);
         }
-        
+
         // Delete reactions and clear attachments on the main message
         reactionRepository.deleteAllByMessageId(messageId);
         message.getAttachments().clear();
+
+        // Tear down an attached poll (votes first, then the poll + its options
+        // via cascade) so no orphaned rows block message deletion.
+        pollRepository.findByMessageId(messageId).ifPresent(poll -> {
+            pollVoteRepository.deleteByPollId(poll.getId());
+            pollRepository.delete(poll);
+        });
         
         // Delete the message from database
         messageRepository.delete(message);
@@ -903,6 +913,10 @@ public class ChatService {
     }
     
     private ChatDto.MessageResponse mapToMessageResponse(Message message) {
+        return mapToMessageResponse(message, null);
+    }
+
+    private ChatDto.MessageResponse mapToMessageResponse(Message message, Long viewerUserId) {
         List<ChatDto.ReactionSummaryDto> reactions = getReactionSummaries(message.getId());
         
         int replyCount = messageRepository.findByParentId(message.getId()).size();
@@ -951,8 +965,137 @@ public class ChatService {
                 .reactions(reactions)
                 .replyCount(replyCount)
                 .attachments(attachmentResponses)
+                .readBy(readReceiptRepository.findReaderIdsByMessageId(message.getId()))
+                .poll(pollRepository.findByMessageId(message.getId())
+                        .map(p -> mapToPollDto(p, viewerUserId)).orElse(null))
                 .build();
     }
+
+    private ChatDto.PollDto mapToPollDto(Poll poll, Long viewerUserId) {
+        long total = 0;
+        List<ChatDto.PollOptionDto> optionDtos = new java.util.ArrayList<>();
+        for (PollOption opt : poll.getOptions()) {
+            long count = pollVoteRepository.countByOptionId(opt.getId());
+            total += count;
+            optionDtos.add(ChatDto.PollOptionDto.builder()
+                    .id(opt.getId())
+                    .text(opt.getText())
+                    .voteCount(count)
+                    .position(opt.getPosition() != null ? opt.getPosition() : 0)
+                    .build());
+        }
+        List<Long> voted = viewerUserId != null
+                ? pollVoteRepository.findOptionIdsByPollIdAndUserId(poll.getId(), viewerUserId)
+                : java.util.Collections.emptyList();
+        return ChatDto.PollDto.builder()
+                .id(poll.getId())
+                .messageId(poll.getMessage().getId())
+                .question(poll.getQuestion())
+                .allowMultiple(Boolean.TRUE.equals(poll.getAllowMultiple()))
+                .closed(Boolean.TRUE.equals(poll.getClosed()))
+                .totalVotes(total)
+                .options(optionDtos)
+                .votedOptionIds(voted)
+                .build();
+    }
+
+    // ============ Poll Operations ============
+
+    @Transactional
+    public ChatDto.MessageResponse createPoll(Long channelId, String question, List<String> options,
+            boolean allowMultiple, String username) {
+        User sender = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Channel", "id", channelId));
+        if (!channel.getMembers().contains(sender)) {
+            throw new ForbiddenException("You are not a member of this channel");
+        }
+        if (question == null || question.isBlank()) {
+            throw new BadRequestException("Poll question is required");
+        }
+        List<String> clean = options == null ? List.of()
+                : options.stream().map(o -> o == null ? "" : o.trim()).filter(o -> !o.isEmpty()).collect(Collectors.toList());
+        if (clean.size() < 2) {
+            throw new BadRequestException("A poll needs at least two options");
+        }
+        if (clean.size() > 12) {
+            throw new BadRequestException("A poll can have at most twelve options");
+        }
+
+        // The poll's question doubles as the owning message's content so text-only
+        // surfaces (search, notifications) still have something meaningful to show.
+        Message message = messageRepository.save(Message.builder()
+                .channel(channel)
+                .sender(sender)
+                .content(question.trim())
+                .messageType(Message.MessageType.POLL)
+                .build());
+
+        Poll poll = Poll.builder()
+                .message(message)
+                .question(question.trim())
+                .allowMultiple(allowMultiple)
+                .closed(false)
+                .build();
+        poll = pollRepository.save(poll);
+
+        for (int i = 0; i < clean.size(); i++) {
+            PollOption opt = PollOption.builder().poll(poll).text(clean.get(i)).position(i).build();
+            poll.getOptions().add(opt);
+        }
+        poll = pollRepository.save(poll);
+
+        ChatDto.MessageResponse response = mapToMessageResponse(message, sender.getId());
+        messagingTemplate.convertAndSend("/topic/channel/" + channelId, response);
+        webhookService.emit("message.created", response);
+        log.debug("Poll created in channel {} by {}", channelId, username);
+        return response;
+    }
+
+    @Transactional
+    public ChatDto.PollDto votePoll(Long pollId, List<Long> optionIds, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        Poll poll = pollRepository.findById(pollId)
+                .orElseThrow(() -> new ResourceNotFoundException("Poll", "id", pollId));
+        Channel channel = poll.getMessage().getChannel();
+        if (!channel.getMembers().contains(user) && !user.hasRole("ADMIN")) {
+            throw new ForbiddenException("You are not a member of this channel");
+        }
+        if (Boolean.TRUE.equals(poll.getClosed())) {
+            throw new BadRequestException("This poll is closed");
+        }
+        List<Long> requested = optionIds == null ? List.of() : optionIds;
+        // Only accept option ids that actually belong to this poll.
+        Map<Long, PollOption> own = poll.getOptions().stream()
+                .collect(Collectors.toMap(PollOption::getId, o -> o));
+        List<PollOption> chosen = requested.stream().filter(own::containsKey).map(own::get).collect(Collectors.toList());
+
+        boolean multi = Boolean.TRUE.equals(poll.getAllowMultiple());
+        if (!multi && chosen.size() > 1) {
+            chosen = chosen.subList(0, 1);
+        }
+
+        // Re-voting replaces the user's previous selection(s) for this poll.
+        pollVoteRepository.deleteByPollIdAndUserId(pollId, user.getId());
+        pollVoteRepository.flush();
+        for (PollOption opt : chosen) {
+            pollVoteRepository.save(PollVote.builder().poll(poll).option(opt).user(user).build());
+        }
+
+        // Broadcast a counts-only snapshot to every channel subscriber. Each client
+        // keeps its own vote state; only the caller's response carries votedOptionIds.
+        ChatDto.PollDto broadcast = mapToPollDto(poll, null);
+        messagingTemplate.convertAndSend("/topic/channel/" + channel.getId(),
+                ChatDto.PollUpdateEvent.builder().type("poll_update").channelId(channel.getId()).poll(broadcast).build());
+
+        return mapToPollDto(poll, user.getId());
+    }
+
+    // Read-receipt write/broadcast lives in ReadReceiptService. Here we only
+    // expose who has read each message (readBy) via mapToMessageResponse so the
+    // initial channel load can render "seen" state.
     
     private ChatDto.UserDto mapToUserDto(User user) {
         return ChatDto.UserDto.builder()

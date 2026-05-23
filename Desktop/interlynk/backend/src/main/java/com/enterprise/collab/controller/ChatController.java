@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +28,7 @@ public class ChatController {
     
     // ============ Channel CRUD Endpoints ============
     
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/channels")
     public ResponseEntity<ChatDto.ChannelResponse> createChannel(
             @RequestBody ChatDto.CreateChannelRequest request,
@@ -248,6 +250,32 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
     
+    // ============ Poll Endpoints ============
+
+    @PostMapping("/channels/{channelId}/polls")
+    public ResponseEntity<ChatDto.MessageResponse> createPoll(
+            @PathVariable Long channelId,
+            @RequestBody ChatDto.CreatePollRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(chatService.createPoll(
+                channelId,
+                request.getQuestion(),
+                request.getOptions(),
+                Boolean.TRUE.equals(request.getAllowMultiple()),
+                authentication.getName()));
+    }
+
+    @PostMapping("/polls/{pollId}/vote")
+    public ResponseEntity<ChatDto.PollDto> votePoll(
+            @PathVariable Long pollId,
+            @RequestBody ChatDto.VotePollRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(chatService.votePoll(pollId, request.getOptionIds(), authentication.getName()));
+    }
+
+    // Read-receipt endpoints live in ChatPresenceController
+    // (POST/GET /api/channels/{id}/read), backed by ReadReceiptService.
+
     // ============ File Upload Endpoints ============
     
     @PostMapping("/channels/{channelId}/attachments")

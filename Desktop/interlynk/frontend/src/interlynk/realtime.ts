@@ -4,6 +4,8 @@
    Components communicate with this module through window CustomEvents:
    - 'il-message'          { channelId, raw }     new/edited message for a channel
    - 'il-message-deleted'  { channelId, messageId }
+   - 'il-read-receipt'     { channelId, userId, messageIds }  messages read by a user (from backend 'messages_read')
+   - 'il-poll-update'      { channelId, poll }    updated poll vote counts
    - 'il-typing'           { channelId, username, isTyping }
    - 'il-presence'         { username, userId, status }
    - 'il-incoming-call'    { roomId, callerUserId, callerUsername, callerDisplayName, callType }
@@ -166,6 +168,18 @@ function openChannelSubscription(channelId: number) {
         const body = JSON.parse(frame.body);
         if (body.type === 'message_deleted') {
           emit('il-message-deleted', { channelId, messageId: String(body.messageId) });
+          return;
+        }
+        if (body.type === 'messages_read') {
+          emit('il-read-receipt', {
+            channelId: String(body.channelId ?? channelId),
+            userId: body.userId != null ? String(body.userId) : null,
+            messageIds: (body.messageIds || []).map((id: unknown) => String(id)),
+          });
+          return;
+        }
+        if (body.type === 'poll_update') {
+          emit('il-poll-update', { channelId: String(body.channelId ?? channelId), poll: body.poll });
           return;
         }
         if (body.id !== undefined && body.content !== undefined) {

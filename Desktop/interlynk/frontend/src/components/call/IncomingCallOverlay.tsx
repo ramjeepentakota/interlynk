@@ -32,7 +32,11 @@ export function IncomingCallOverlay() {
     try {
       await callApi.joinCall(String(incomingCall.roomId));
       const roomResponse = await callApi.getCall(String(incomingCall.roomId));
-      setCurrentCall(roomResponse.data);
+      // The backend CallRoomResponse has no `callType` field — the caller side
+      // injects it locally when storing the room. Mirror that here, otherwise
+      // CallPanel falls back to 'video' for every accepted call, which both
+      // renders the wrong UI and requests the camera on voice-only calls.
+      setCurrentCall({ ...roomResponse.data, callType: incomingCall.callType } as any);
       setInCall(true);
       clearIncomingCall();
 

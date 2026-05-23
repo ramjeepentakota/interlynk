@@ -432,7 +432,7 @@ export function AdminConsole() {
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Admin Center</div>
-            <div style={{ fontSize: 11, color: 'var(--t3)' }}>InterLynk</div>
+            <div style={{ fontSize: 11, color: 'var(--t3)' }}>Narada</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

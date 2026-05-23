@@ -2,7 +2,7 @@
    Fully backend-wired; no mock participants or simulated calls.
    Voice CHANNELS (ambient, Discord-style) have been removed — only 1-on-1
    and group voice/video calls are supported here. */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Ic, type IconName } from './icons';
 import { Avatar, Input, Tip } from './ui';
@@ -14,6 +14,23 @@ import { colorFor, type User } from './data';
 import * as api from './api';
 import { useAuthStore } from '@/store/useAppStore';
 import { publishCallSignal } from './realtime';
+
+/** Resize an image File to a square JPEG data URL (centre-cropped). Used for
+ *  avatars so we can persist the picture in the backend's avatarUrl field
+ *  without a separate file-storage endpoint. */
+async function resizeImageToDataUrl(file: File, size: number, quality: number): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D unavailable');
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+  return canvas.toDataURL('image/jpeg', quality);
+}
 
 /* ── LoginScreen ─────────────────────────────────────────── */
 export function LoginScreen() {
@@ -37,14 +54,14 @@ export function LoginScreen() {
   };
 
   const features: { icon: IconName; color: string; title: string; desc: string }[] = [
-    { icon: 'Msg', color: '#8b5cf6', title: 'Rich Messaging', desc: 'Threads, reactions, @mentions' },
-    { icon: 'Video', color: '#10b981', title: 'HD Video & Voice', desc: 'Group calls with screen share' },
-    { icon: 'Zap', color: '#f43f5e', title: 'Realtime Sync', desc: 'Live channels powered by WebSocket' },
+    { icon: 'Msg', color: '#c9a85c', title: 'Rich Messaging', desc: 'Threads, reactions, @mentions' },
+    { icon: 'Video', color: '#2f8f6b', title: 'HD Video & Voice', desc: 'Group calls with screen share' },
+    { icon: 'Zap', color: '#b5546a', title: 'Realtime Sync', desc: 'Live channels powered by WebSocket' },
   ];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: 'var(--bg-base)', display: 'flex', overflow: 'hidden' }}>
-      <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, overflow: 'hidden' }}>
+    <div className="il-login" style={{ width: '100vw', height: '100vh', background: 'var(--bg-base)', display: 'flex', overflow: 'hidden' }}>
+      <div className="il-login-left" style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,.25) 0%, transparent 65%)', top: '-15%', left: '-15%' }} />
           <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 65%)', bottom: '-10%', right: '-10%' }} />
@@ -52,12 +69,11 @@ export function LoginScreen() {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 420, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,var(--primary) 0%,#a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(139,92,246,.4)' }}>
-              <span style={{ color: '#fff', fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 20 }}>IL</span>
-            </div>
-            <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 24, color: 'var(--t1)', letterSpacing: '-.5px' }}>InterLynk</span>
-          </div>
+          <img
+            src="/narada-logo.png"
+            alt="Narada — Connect · Communicate · Inspire"
+            style={{ width: '100%', maxWidth: 460, height: 'auto', display: 'block', marginBottom: 28 }}
+          />
 
           <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 36, color: 'var(--t1)', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-.5px' }}>
             Your team,<br />
@@ -84,7 +100,7 @@ export function LoginScreen() {
         </div>
       </div>
 
-      <div style={{ width: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', position: 'relative', flexShrink: 0 }}>
+      <div className="il-login-right" style={{ width: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', position: 'relative', flexShrink: 0 }}>
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           style={{ position: 'absolute', top: 20, right: 20, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '6px 11px', cursor: 'pointer', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
@@ -185,6 +201,27 @@ function VideoTile({ p, big }: { p: LiveKitParticipant; big?: boolean }) {
   );
 }
 
+/** Pin/unpin button overlay used on top of a LiveKit VideoTile. */
+function TileOverlay({ isPinned, onPinToggle, compact }: { isPinned: boolean; onPinToggle: () => void; compact?: boolean }) {
+  return (
+    <Tip label={isPinned ? 'Unpin' : 'Pin to spotlight'} pos="left">
+      <button
+        onClick={(e) => { e.stopPropagation(); onPinToggle(); }}
+        style={{
+          position: 'absolute', top: 8, right: 8, zIndex: 6,
+          width: compact ? 26 : 30, height: compact ? 26 : 30, borderRadius: '50%',
+          border: 'none', cursor: 'pointer',
+          background: isPinned ? 'rgba(139,92,246,.85)' : 'rgba(0,0,0,.55)',
+          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)', transition: 'background .15s',
+        }}
+      >
+        <Ic.Pin s={compact ? 13 : 15} />
+      </button>
+    </Tip>
+  );
+}
+
 /** A circular avatar used in the call lobby (mic-muted ring + name pill). */
 function VoiceAvatar({ name, identity, speaking, muted, isLocal }: { name: string; identity: string; speaking: boolean; muted: boolean; isLocal?: boolean }) {
   const avatarUser: Partial<User> = { name, color: colorFor(identity) };
@@ -205,7 +242,10 @@ function VoiceAvatar({ name, identity, speaking, muted, isLocal }: { name: strin
 
 export function CallPanel() {
   const { callSession, endCurrentCall, currentUser } = useApp();
-  const [token, setToken] = useState<api.LiveKitToken | null>(null);
+  // WebRTC-only build: initialise token synchronously so the first render
+  // already has tokenResolved=true. Eliminates the one-render-cycle gap
+  // between mount and preflight/startCall firing.
+  const [token, setToken] = useState<api.LiveKitToken | null>({ configured: false });
   const [duration, setDuration] = useState(0);
   const callType = callSession?.callType ?? 'voice';
   const title = callSession?.title ?? 'Call';
@@ -216,6 +256,14 @@ export function CallPanel() {
   // the call is already "accepted". The initiator starts in a waiting state
   // and flips to accepted when the callee's accept signal arrives.
   const [calleeAccepted, setCalleeAccepted] = useState(!isInitiator);
+  // True when the browser's autoplay policy refused to start the remote audio
+  // element. We surface a one-click "enable sound" prompt and also auto-unlock
+  // on the next user gesture — this is what was leaving one side silent.
+  const [audioBlocked, setAudioBlocked] = useState(false);
+  // User-pinned spotlight tile (overrides auto-selection). 'local' / 'remote'
+  // for the WebRTC path, or a LiveKit participant identity for the SFU path.
+  // null = auto: screen-share takes precedence, then remote camera, then local.
+  const [pinnedTile, setPinnedTile] = useState<string | null>(null);
 
   // Listen for remote call signaling state changes (accepted / rejected / ended).
   useEffect(() => {
@@ -234,9 +282,15 @@ export function CallPanel() {
 
   useEffect(() => {
     if (roomId == null) return;
-    let cancelled = false;
-    api.fetchLiveKitToken(roomId, true).then((t) => { if (!cancelled) setToken(t); }).catch(() => { if (!cancelled) setToken({ configured: false }); });
-    return () => { cancelled = true; };
+    // PRODUCTION: WebRTC-only build. We deliberately do NOT fetch a LiveKit
+    // token here — that HTTP roundtrip used to gate `preflightLocalMedia()`
+    // AND the caller's `startCall()` trigger, adding 50–500 ms (and a full
+    // network failure surface) to every call connect. Setting the token
+    // synchronously to {configured:false} makes `tokenResolved` true on the
+    // first render so the WebRTC path runs immediately. The `useLiveKit`
+    // hook stays inert because `enabled` evaluates to false without a token.
+    // If/when LiveKit gets re-enabled, restore the fetch behind a flag.
+    setToken({ configured: false });
   }, [roomId]);
 
   const lk = useLiveKit({
@@ -264,7 +318,7 @@ export function CallPanel() {
   const tokenResolved = token !== null;
   const lkConfigured = Boolean(token?.configured);
   useEffect(() => {
-    if (!tokenResolved || lkConfigured) return;
+    if (lkConfigured) return;
     if (!isInitiator) return;
     if (roomId == null) return;
     if (webrtc.callState !== 'idle') return;
@@ -272,16 +326,36 @@ export function CallPanel() {
     // For group/voice-channel calls (no specific target user), proceed.
     if (targetUserId != null && !calleeAccepted) return;
     webrtc.startCall();
-  }, [tokenResolved, lkConfigured, isInitiator, webrtc.callState, roomId, targetUserId, calleeAccepted, webrtc]);
+  }, [lkConfigured, isInitiator, webrtc.callState, roomId, targetUserId, calleeAccepted, webrtc]);
 
-  // Pre-flight microphone / camera capture the moment the call panel opens in
-  // WebRTC mode. This is what triggers the browser permission prompt — without
-  // it the user only ever gets prompted after the signaling handshake
-  // completes (which never happens if the other side never joins). Requesting
-  // up-front also shows the user their own preview immediately, so the call
-  // never looks "dead". Safe to call repeatedly: the hook reuses the stream.
+  // Callee side: publish 'call-accepted' the moment the CallPanel mounts.
+  // This runs AFTER useWebRTC's internal effect (effects fire in declaration
+  // order within a commit), so the webrtc-signal listener is guaranteed to
+  // be registered before we tell the caller to send the offer — race-free.
+  // Replaces the old 50ms setTimeout in InterLynkApp.acceptIncomingCall
+  // which was both slow and unreliable on slower machines / heavier renders.
+  const calleeAcceptedSentRef = useRef(false);
   useEffect(() => {
-    if (!tokenResolved || lkConfigured) return;
+    if (isInitiator) return;
+    if (roomId == null || targetUserId == null) return;
+    if (calleeAcceptedSentRef.current) return;
+    const me = useAuthStore.getState().user;
+    if (!me) return;
+    calleeAcceptedSentRef.current = true;
+    publishCallSignal({
+      type: 'call-accepted',
+      roomId: Number(roomId),
+      senderUserId: Number(me.id),
+      targetUserId: Number(targetUserId),
+      callType,
+    });
+  }, [isInitiator, roomId, targetUserId, callType]);
+
+  // Pre-flight microphone / camera capture the moment the call panel opens.
+  // No longer gated on the LiveKit token fetch (it now resolves synchronously)
+  // — the permission prompt fires as fast as React can commit.
+  useEffect(() => {
+    if (lkConfigured) return;
     if (roomId == null) return;
     if (webrtc.localStream) return;
     if (webrtc.callState === 'ended' || webrtc.callState === 'error') return;
@@ -307,29 +381,121 @@ export function CallPanel() {
   }, [webrtc.remoteStream, webrtc.remoteVideoOff, webrtc.remoteScreenSharing]);
   useEffect(() => {
     const el = remoteAudioRef.current;
-    if (!el || !webrtc.remoteStream) return;
-    el.srcObject = webrtc.remoteStream;
+    const stream = webrtc.remoteStream;
+    if (!el || !stream) return;
+    // ─── REMOTE-AUDIO PLAYBACK — PRODUCTION INVARIANTS ─────────────────────
+    // This effect is the single source of truth for remote audio playback.
+    // If you change it, DO NOT regress the following invariants — each is
+    // tied to a specific production bug that previously caused one-way
+    // audio across every test device (mobile, multi-browser):
+    //
+    //  1. The <audio> element must be UNCONDITIONALLY mounted (see the
+    //     element below). Gating it on tokenResolved/useWebRTCMode reopens
+    //     the race where ontrack fires before the element exists and
+    //     remoteAudioRef stays null forever.
+    //
+    //  2. Bind ONLY the audio track in a fresh single-track MediaStream —
+    //     NOT the merged remote stream that also carries video. Chromium
+    //     can silently stall audio when the same combined stream is bound
+    //     to both <video> and <audio>.
+    //
+    //  3. The element must NOT use `display:none`. Some Chromium versions
+    //     throttle/pause display:none media as "background audio". Use
+    //     off-screen positioning + opacity:0 instead.
+    //
+    //  4. play() rejections must NOT be silently swallowed. We retry with
+    //     backoff, then install a global user-gesture unlock + a visible
+    //     "Click to enable call audio" button as last resort.
+    //
+    //  5. Defensive auto-resume: if the element pauses unexpectedly (some
+    //     OS-level interruptions can pause it without a fresh gesture),
+    //     we re-call play() automatically.
+    // ───────────────────────────────────────────────────────────────────────
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+    const audioOnly = new MediaStream([audioTracks[0]]);
+    el.srcObject = audioOnly;
     el.muted = false;
     el.volume = 1;
-    // Autoplay is allowed here because entering a call is a user gesture, but
-    // some browsers (especially Chromium on a fresh tab) still reject the
-    // first play() — retry on the next tick so a transient rejection doesn't
-    // leave the call silent. Also re-run whenever the stream's track list
-    // changes so a late-arriving remote audio track is bound immediately.
-    const tryPlay = () => el.play?.().catch(() => undefined);
-    tryPlay();
-    const t1 = window.setTimeout(tryPlay, 100);
-    const t2 = window.setTimeout(tryPlay, 500);
-    const stream = webrtc.remoteStream;
+
+    let cancelled = false;
+    let removeGestureUnlock: (() => void) | null = null;
+
+    const attemptPlay = async (): Promise<boolean> => {
+      try {
+        await el.play();
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // If autoplay is refused, unlock on the very next user interaction. The
+    // user is already in the call UI (mute/hang-up buttons, the window), so a
+    // single click/keypress anywhere reliably resumes playback. This is the
+    // deterministic fallback that fixes the intermittent one-way audio: a
+    // swallowed play() rejection used to leave that peer permanently muted.
+    const installGestureUnlock = () => {
+      if (removeGestureUnlock) return;
+      const events: (keyof WindowEventMap)[] = ['click', 'keydown', 'touchstart', 'pointerdown'];
+      const onGesture = () => {
+        void attemptPlay().then((ok) => {
+          if (ok && !cancelled) {
+            setAudioBlocked(false);
+            removeGestureUnlock?.();
+          }
+        });
+      };
+      events.forEach((ev) => window.addEventListener(ev, onGesture, { passive: true }));
+      removeGestureUnlock = () => {
+        events.forEach((ev) => window.removeEventListener(ev, onGesture));
+        removeGestureUnlock = null;
+      };
+    };
+
+    const run = async () => {
+      // Immediate attempt, then a few backoff retries for transient rejections
+      // (Chromium occasionally rejects the first play() even with a gesture).
+      for (const delay of [0, 100, 300, 800, 1500]) {
+        if (cancelled) return;
+        if (delay) await new Promise((r) => setTimeout(r, delay));
+        if (cancelled) return;
+        if (await attemptPlay()) {
+          if (!cancelled) setAudioBlocked(false);
+          return;
+        }
+      }
+      if (!cancelled) {
+        setAudioBlocked(true);
+        installGestureUnlock();
+      }
+    };
+    void run();
+
+    // Re-bind and replay if the remote track set changes (late-arriving audio).
     const onAddTrack = () => {
-      el.srcObject = stream;
-      tryPlay();
+      const latest = stream.getAudioTracks()[0];
+      if (latest) el.srcObject = new MediaStream([latest]);
+      void run();
     };
     stream.addEventListener?.('addtrack', onAddTrack);
+
+    // Defensive: if the element gets paused without us asking (some OS-level
+    // interruptions — incoming phone call, focus change, audio-device
+    // switching — can pause an HTMLMediaElement), resume on the next tick.
+    // Without this safety net a one-time pause silently leaves the call
+    // muted on that peer until they end and re-establish.
+    const onPause = () => {
+      if (cancelled) return;
+      window.setTimeout(() => { if (!cancelled && el.paused) void attemptPlay(); }, 50);
+    };
+    el.addEventListener('pause', onPause);
+
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      cancelled = true;
       stream.removeEventListener?.('addtrack', onAddTrack);
+      el.removeEventListener('pause', onPause);
+      removeGestureUnlock?.();
     };
   }, [webrtc.remoteStream]);
 
@@ -421,11 +587,42 @@ export function CallPanel() {
   };
 
   return (
-    <div style={{ position: 'relative', background: '#09090e', display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
-      {/* Hidden sink for remote audio in WebRTC mode — always mounted so voice
-          calls (which render no <video>) still play the other party's voice. */}
-      {useWebRTCMode && <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(255,255,255,.04)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,.08)', flexShrink: 0 }}>
+    <div className="il-callpanel" style={{ position: 'relative', background: '#09090e', display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
+      {/* Hidden sink for remote audio. MUST be unconditionally rendered: the
+          previous `useWebRTCMode && ...` gate created a race where the
+          callee's `ontrack` fired BEFORE the LiveKit-token fetch resolved
+          (which is what flipped useWebRTCMode true). At that point
+          remoteAudioRef.current was null, the bind effect early-returned,
+          and when the audio element later mounted, no further effect run
+          ever bound srcObject — leaving the callee with healthy RTP flowing
+          (↑↓ kbps non-zero) but zero audible sound. Always mounting fixes
+          the race deterministically.
+          We use off-screen positioning instead of `display: none` because
+          Chromium has historically had bugs where display:none media
+          elements get throttled/paused as "background audio". */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        aria-hidden
+        tabIndex={-1}
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none', left: -9999, top: -9999 }}
+      />
+      {useWebRTCMode && audioBlocked && (
+        <button
+          onClick={() => {
+            const el = remoteAudioRef.current;
+            if (!el) return;
+            el.muted = false;
+            el.volume = 1;
+            void el.play().then(() => setAudioBlocked(false)).catch(() => undefined);
+          }}
+          style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 50, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          🔊 Click to enable call audio
+        </button>
+      )}
+      <div className="il-callpanel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(255,255,255,.04)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: isConnected ? 'var(--ok)' : connecting ? 'var(--warn)' : '#6b7280', animation: 'pulse 2s infinite' }} />
@@ -435,6 +632,53 @@ export function CallPanel() {
             {callType === 'video' ? '📹 ' : '🎙 '}{title}
           </span>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>{stateLabel}</span>
+          {useWebRTCMode && isConnected && (() => {
+            // Heuristics that translate the codec-level audio levels into
+            // a plain-English diagnosis the user can act on. audioLevel field
+            // is 0..1; speech is usually > 0.02, silence < 0.005.
+            const MIC_ACTIVE = webrtc.audioFlow.localLevel > 0.02;
+            const REMOTE_ACTIVE = webrtc.audioFlow.remoteLevel > 0.02;
+            const micPct = Math.min(100, Math.round(webrtc.audioFlow.localLevel * 100 * 3));   // ×3 so a normal voice fills the bar visibly
+            const remotePct = Math.min(100, Math.round(webrtc.audioFlow.remoteLevel * 100 * 3));
+            const problem = webrtc.audioFlow.inboundStuck
+              ? 'No incoming RTP — Windows Firewall / NAT'
+              : webrtc.audioFlow.outboundStuck
+                ? 'No outgoing RTP — mic not capturing'
+                : !MIC_ACTIVE && webrtc.audioFlow.outKbps > 1
+                  ? 'Mic is sending silence! Wrong device or OS-muted'
+                  : !REMOTE_ACTIVE && webrtc.audioFlow.inKbps > 1
+                    ? "Peer's mic is sending silence (their device issue)"
+                    : null;
+            return (
+              <span
+                data-audio-diag
+                title={problem ?? 'Live audio diagnostics. Bars: mic capture / received audio amplitude. kbps: RTP byte rate.'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontSize: 11, fontFamily: "'JetBrains Mono',monospace",
+                  color: problem ? '#fca5a5' : 'rgba(255,255,255,.75)',
+                  background: problem ? 'rgba(239,68,68,.15)' : 'rgba(255,255,255,.06)',
+                  border: `1px solid ${problem ? 'rgba(239,68,68,.4)' : 'rgba(255,255,255,.1)'}`,
+                  padding: '3px 10px', borderRadius: 6, cursor: 'help',
+                }}
+              >
+                <span title="Your microphone — should move when you speak" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Mic
+                  <span style={{ position: 'relative', width: 36, height: 6, background: 'rgba(255,255,255,.1)', borderRadius: 3, overflow: 'hidden' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${micPct}%`, background: MIC_ACTIVE ? '#4ade80' : '#71717a', transition: 'width .15s' }} />
+                  </span>
+                </span>
+                <span title="Audio received from peer — should move when THEY speak" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Recv
+                  <span style={{ position: 'relative', width: 36, height: 6, background: 'rgba(255,255,255,.1)', borderRadius: 3, overflow: 'hidden' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${remotePct}%`, background: REMOTE_ACTIVE ? '#4ade80' : '#71717a', transition: 'width .15s' }} />
+                  </span>
+                </span>
+                <span style={{ color: 'rgba(255,255,255,.5)' }}>↑{webrtc.audioFlow.outKbps.toFixed(0)} ↓{webrtc.audioFlow.inKbps.toFixed(0)}kbps</span>
+                {problem && <span style={{ marginLeft: 4 }}>· {problem}</span>}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
@@ -461,41 +705,140 @@ export function CallPanel() {
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 20 }}>
-        {showLkVideoGrid ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${lkParticipants.length === 1 ? 1 : lkParticipants.length <= 4 ? 2 : 3}, 1fr)`, gap: 12, height: '100%', minHeight: 0 }}>
-            {lkParticipants.map((p) => (
-              <VideoTile key={p.identity} p={p} big={lkParticipants.length <= 2} />
-            ))}
-          </div>
-        ) : showWebRTCVideoGrid ? (
-          <div style={{ display: 'grid', gridTemplateColumns: webrtc.remoteStream ? '1fr 1fr' : '1fr', gap: 12, height: '100%', minHeight: 0 }}>
-            <div style={{ position: 'relative', background: '#1c2128', borderRadius: 'var(--r-xl)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-              {(isCamOn || isScreenOn) && webrtc.localStream ? (
-                <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isScreenOn ? 'none' : 'scaleX(-1)' }} />
-              ) : (
-                <VoiceAvatar name={currentUser?.name || 'You'} identity={currentUser?.username || 'you'} speaking={false} muted={!isMicOn} isLocal />
-              )}
-              <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,.6)', borderRadius: 6, padding: '3px 8px', fontSize: 12, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {!isMicOn && <Ic.MicOff s={12} c="#f87171" />}You{isScreenOn ? ' · sharing' : ''}
+      <div className="il-callpanel-stage" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: 20 }}>
+        {showLkVideoGrid ? (() => {
+          // ─── LiveKit spotlight layout ─────────────────────────────────
+          // Auto-pick: any screen-sharer wins, otherwise the first remote
+          // participant, otherwise the local participant. User pin overrides.
+          const findById = (id: string | null) => id ? lkParticipants.find((q) => q.identity === id) ?? null : null;
+          const userPinned = findById(pinnedTile);
+          const screenSharer = lkParticipants.find((q) => q.screenSharing) ?? null;
+          const remoteFirst = lkParticipants.find((q) => !q.isLocal) ?? null;
+          const spotlight = userPinned ?? screenSharer ?? remoteFirst ?? lkParticipants[0];
+          const thumbs = lkParticipants.filter((q) => q.identity !== spotlight.identity);
+          return (
+            <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
+              <div style={{ position: 'absolute', inset: 0 }}>
+                <VideoTile p={spotlight} big />
+                <TileOverlay
+                  isPinned={pinnedTile === spotlight.identity}
+                  onPinToggle={() => setPinnedTile((cur) => cur === spotlight.identity ? null : spotlight.identity)}
+                />
               </div>
-            </div>
-            {webrtc.remoteStream && (
-              <div style={{ position: 'relative', background: '#1c2128', borderRadius: 'var(--r-xl)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-                {/* The <video> stays mounted (so its srcObject binding survives) and
-                    is hidden behind the avatar when the peer has no visible video.
-                    It is muted — remote audio plays via the dedicated <audio>. */}
-                <video ref={remoteVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: remoteHasVideo ? 'block' : 'none' }} />
-                {!remoteHasVideo && (
-                  <VoiceAvatar name={title} identity="remote" speaking={false} muted={webrtc.remoteMuted} />
-                )}
-                <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,.6)', borderRadius: 6, padding: '3px 8px', fontSize: 12, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {webrtc.remoteMuted && <Ic.MicOff s={12} c="#f87171" />}{title}{webrtc.remoteScreenSharing ? ' · sharing' : ''}
+              {thumbs.length > 0 && (
+                <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 5, maxHeight: 'calc(100% - 24px)', overflowY: 'auto' }}>
+                  {thumbs.map((p) => (
+                    <div key={p.identity} style={{ position: 'relative', width: 200, height: 120, borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.1)' }}>
+                      <VideoTile p={p} />
+                      <TileOverlay
+                        compact
+                        isPinned={pinnedTile === p.identity}
+                        onPinToggle={() => setPinnedTile((cur) => cur === p.identity ? null : p.identity)}
+                      />
+                    </div>
+                  ))}
                 </div>
+              )}
+            </div>
+          );
+        })() : showWebRTCVideoGrid ? (() => {
+          // ─── WebRTC spotlight layout ──────────────────────────────────
+          // The two <video> elements MUST stay mounted across spotlight
+          // swaps (production invariant — see remote-audio comment above
+          // and [[interlynk-webrtc-callee-order]]). So we always render
+          // them in the same DOM order and just reposition their wrapper
+          // via CSS based on which one is the spotlight.
+          const hasRemote = Boolean(webrtc.remoteStream);
+          const localIsScreen = isScreenOn;
+          const remoteIsScreen = webrtc.remoteScreenSharing;
+          // Auto-spotlight priority: any screen share wins (remote first),
+          // then the remote camera, then local. User pin overrides.
+          const autoSpotlight: 'local' | 'remote' =
+            remoteIsScreen && hasRemote ? 'remote'
+              : localIsScreen ? 'local'
+                : hasRemote ? 'remote'
+                  : 'local';
+          const spotlightId: 'local' | 'remote' =
+            (pinnedTile === 'local' || pinnedTile === 'remote')
+              ? (pinnedTile === 'remote' && !hasRemote ? autoSpotlight : pinnedTile)
+              : autoSpotlight;
+
+          // Wrapper style: big = fills container, small = top-right thumbnail.
+          // We stack thumbnails vertically when both tiles exist.
+          const bigStyle: CSSProperties = { position: 'absolute', inset: 0, background: '#1c2128', borderRadius: 'var(--r-xl)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+          const thumbStyle = (idx: number): CSSProperties => ({
+            position: 'absolute', top: 12 + idx * 148, right: 12, width: 220, height: 136,
+            background: '#1c2128', borderRadius: 'var(--r)', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.1)', zIndex: 5,
+          });
+
+          // The local tile is the only one rendered if there is no remote yet.
+          const localIsBig = spotlightId === 'local' || !hasRemote;
+          const remoteIsBig = spotlightId === 'remote' && hasRemote;
+          // Thumbnail index assignments (only the non-spotlight tile is a thumb).
+          const localThumbIdx = !localIsBig ? 0 : -1;
+          const remoteThumbIdx = !remoteIsBig && hasRemote ? 0 : -1;
+
+          const PinBtn = ({ tileId, compact }: { tileId: 'local' | 'remote'; compact?: boolean }) => {
+            const pinned = pinnedTile === tileId;
+            return (
+              <Tip label={pinned ? 'Unpin' : 'Pin to spotlight'} pos="left">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPinnedTile((cur) => cur === tileId ? null : tileId); }}
+                  style={{
+                    position: 'absolute', top: 8, right: 8, zIndex: 6,
+                    width: compact ? 26 : 30, height: compact ? 26 : 30, borderRadius: '50%',
+                    border: 'none', cursor: 'pointer',
+                    background: pinned ? 'rgba(139,92,246,.85)' : 'rgba(0,0,0,.55)',
+                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backdropFilter: 'blur(8px)', transition: 'background .15s',
+                  }}
+                >
+                  <Ic.Pin s={compact ? 13 : 15} />
+                </button>
+              </Tip>
+            );
+          };
+
+          return (
+            <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
+              {/* LOCAL tile wrapper — always mounted, swaps between big/thumb via CSS. */}
+              <div
+                onClick={() => { if (!localIsBig) setPinnedTile('local'); }}
+                style={localIsBig ? bigStyle : { ...thumbStyle(localThumbIdx), cursor: 'pointer' }}
+              >
+                {(isCamOn || isScreenOn) && webrtc.localStream ? (
+                  <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: isScreenOn ? 'contain' : 'cover', background: '#000', transform: isScreenOn ? 'none' : 'scaleX(-1)' }} />
+                ) : (
+                  <VoiceAvatar name={currentUser?.name || 'You'} identity={currentUser?.username || 'you'} speaking={false} muted={!isMicOn} isLocal />
+                )}
+                <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,.65)', borderRadius: 6, padding: '3px 8px', fontSize: localIsBig ? 12 : 11, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, maxWidth: 'calc(100% - 16px)' }}>
+                  {!isMicOn && <Ic.MicOff s={12} c="#f87171" />}You{isScreenOn ? ' · sharing' : ''}
+                </div>
+                <PinBtn tileId="local" compact={!localIsBig} />
               </div>
-            )}
-          </div>
-        ) : (
+
+              {/* REMOTE tile wrapper — always mounted (production invariant) so
+                  the <video> srcObject binding survives spotlight swaps. */}
+              {hasRemote && (
+                <div
+                  onClick={() => { if (!remoteIsBig) setPinnedTile('remote'); }}
+                  style={remoteIsBig ? bigStyle : { ...thumbStyle(remoteThumbIdx), cursor: 'pointer' }}
+                >
+                  <video ref={remoteVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: webrtc.remoteScreenSharing ? 'contain' : 'cover', background: '#000', display: remoteHasVideo ? 'block' : 'none' }} />
+                  {!remoteHasVideo && (
+                    <VoiceAvatar name={title} identity="remote" speaking={false} muted={webrtc.remoteMuted} />
+                  )}
+                  <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,.65)', borderRadius: 6, padding: '3px 8px', fontSize: remoteIsBig ? 12 : 11, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, maxWidth: 'calc(100% - 16px)' }}>
+                    {webrtc.remoteMuted && <Ic.MicOff s={12} c="#f87171" />}{title}{webrtc.remoteScreenSharing ? ' · sharing' : ''}
+                  </div>
+                  <PinBtn tileId="remote" compact={!remoteIsBig} />
+                </div>
+              )}
+            </div>
+          );
+        })() : (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'center', alignContent: 'center' }}>
               {configured && lkParticipants.length > 0 ? (
@@ -524,7 +867,7 @@ export function CallPanel() {
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '16px 20px', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
+      <div className="il-callpanel-controls" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '16px 20px', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
         {ctrlBtn(isMicOn ? 'Mute' : 'Unmute', 'MicOff', !isMicOn, '#ef4444', toggleMic)}
         {callType === 'video' && ctrlBtn(isCamOn ? 'Turn off camera' : 'Turn on camera', 'VideoOff', !isCamOn, '#ef4444', toggleCam)}
         {ctrlBtn(
@@ -537,6 +880,7 @@ export function CallPanel() {
         <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,.12)', margin: '0 4px' }} />
         <Tip label="Leave" pos="top">
           <button
+            data-hangup
             onClick={hangUp}
             style={{ width: 52, height: 48, borderRadius: 24, border: 'none', cursor: 'pointer', background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(239,68,68,.45)' }}
           >
@@ -552,6 +896,23 @@ export function CallPanel() {
 export function IncomingCallOverlay() {
   const { incomingCall, setIncomingCall, acceptIncomingCall } = useApp();
   const { user } = useAuthStore();
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+
+  // Play ringtone while the incoming-call overlay is visible. Some browsers
+  // require a prior user gesture before .play() resolves; we swallow the
+  // rejection so an autoplay block never crashes the overlay.
+  useEffect(() => {
+    if (!incomingCall) return;
+    const a = new Audio('/ringtone.mp3');
+    a.loop = true;
+    a.volume = 1;
+    ringtoneRef.current = a;
+    a.play().catch(() => undefined);
+    return () => {
+      try { a.pause(); a.currentTime = 0; } catch { /* noop */ }
+      ringtoneRef.current = null;
+    };
+  }, [incomingCall?.roomId]);
 
   if (!incomingCall) return null;
 
@@ -579,8 +940,8 @@ export function IncomingCallOverlay() {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: 24, pointerEvents: 'none' }}>
-      <div className="il-scale-in" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 20, width: 320, boxShadow: '0 20px 60px rgba(0,0,0,.7)', pointerEvents: 'all' }}>
+    <div className="il-incoming-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: 24, pointerEvents: 'none' }}>
+      <div className="il-scale-in il-incoming-card" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 20, width: 320, boxShadow: '0 20px 60px rgba(0,0,0,.7)', pointerEvents: 'all' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           <div style={{ position: 'relative' }}>
             <Avatar user={caller} size={48} />
@@ -610,6 +971,59 @@ export function IncomingCallOverlay() {
   );
 }
 
+/* ── Toast host ──────────────────────────────────────────── */
+/** Listens for `il-toast` window events and surfaces a small stacked
+ *  notification card top-right. Used today by InterLynkApp to flash
+ *  CALL_INVITE and other realtime notifications as they arrive. */
+export function ToastHost() {
+  const [toasts, setToasts] = useState<{ id: number; title: string; message: string; tone: 'info' | 'warn' }[]>([]);
+  useEffect(() => {
+    let nextId = 1;
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { title: string; message?: string; tone?: 'info' | 'warn' };
+      const id = nextId++;
+      setToasts((p) => [...p, { id, title: d.title, message: d.message || '', tone: d.tone || 'info' }]);
+      setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000);
+    };
+    window.addEventListener('il-toast', handler);
+    return () => window.removeEventListener('il-toast', handler);
+  }, []);
+  if (toasts.length === 0) return null;
+  return (
+    <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9600, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 360 }}>
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className="il-scale-in"
+          style={{
+            background: 'var(--bg-elv)',
+            border: `1px solid ${t.tone === 'warn' ? 'rgba(245,158,11,.5)' : 'var(--bd2)'}`,
+            borderLeft: `4px solid ${t.tone === 'warn' ? 'var(--warn)' : 'var(--primary)'}`,
+            borderRadius: 'var(--r-lg)',
+            padding: '10px 14px',
+            boxShadow: '0 12px 36px rgba(0,0,0,.45)',
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}
+        >
+          <span style={{ color: t.tone === 'warn' ? 'var(--warn)' : 'var(--primary)', display: 'flex', flexShrink: 0, marginTop: 1 }}>
+            <Ic.Bell s={16} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{t.title}</div>
+            {t.message && <div style={{ fontSize: 12.5, color: 'var(--t2)', marginTop: 2 }}>{t.message}</div>}
+          </div>
+          <button
+            onClick={() => setToasts((p) => p.filter((x) => x.id !== t.id))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 2, display: 'flex', borderRadius: 4 }}
+          >
+            <Ic.X s={13} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Call End Status Banner ─────────────────────────────── */
 export function CallEndBanner() {
   const { callEndReason } = useApp();
@@ -627,13 +1041,65 @@ export function CallEndBanner() {
 
 /* ── Settings Modal ──────────────────────────────────────── */
 export function SettingsModal() {
-  const { setShowSettings, theme, setTheme, logout, currentUser } = useApp();
+  const { setShowSettings, theme, setTheme, logout, currentUser, patchCurrentUser } = useApp();
   const me = currentUser || { name: 'You', username: '', role: 'MEMBER' as const };
   const email = useAuthStore.getState().user?.email || '';
   const [activeTab, setActiveTab] = useState('profile');
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
   const [pwdStatus, setPwdStatus] = useState<'idle' | 'saving' | 'ok' | 'error'>('idle');
   const [pwdError, setPwdError] = useState('');
+
+  // Profile picture upload state
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'saving' | 'ok' | 'error'>('idle');
+  const [avatarError, setAvatarError] = useState('');
+
+  const handleAvatarFile = async (file: File) => {
+    // Be strict about supported formats — server only stores image/* and the
+    // canvas resize below assumes a decodable image. PNG/JPG/JPEG/WEBP cover
+    // the formats the user explicitly asked for.
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const looksLikeImage = file.type.startsWith('image/')
+      || ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+    if (!looksLikeImage) {
+      setAvatarStatus('error');
+      setAvatarError('Please choose an image file (JPG, JPEG, PNG, or WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarStatus('error');
+      setAvatarError('Image is larger than 5 MB. Please pick a smaller picture.');
+      return;
+    }
+    setAvatarStatus('saving');
+    setAvatarError('');
+    try {
+      // Resize client-side to 256×256 JPEG so the persisted data: URL stays
+      // small (~20-30 KB). The avatar_url column is now TEXT on the backend,
+      // so anything in this size range is well within DB limits.
+      const dataUrl = await resizeImageToDataUrl(file, 256, 0.85);
+      const updated = await api.updateAvatar(dataUrl);
+      patchCurrentUser({ avatar: updated.avatar || dataUrl });
+      // Sync the auth-store cached profile too so other surfaces (rail, DMs)
+      // see the new picture without a hard reload.
+      const stored = useAuthStore.getState().user;
+      if (stored) useAuthStore.getState().setUser({ ...stored, avatar: updated.avatar || dataUrl } as any);
+      setAvatarStatus('ok');
+      setTimeout(() => setAvatarStatus('idle'), 2500);
+    } catch (e: any) {
+      setAvatarStatus('error');
+      // Show the actual server error when available — most often this is a
+      // 413 Payload Too Large or a DB column-length error, both of which are
+      // actionable for the user.
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.message || e?.message;
+      setAvatarError(
+        status === 413
+          ? 'Image is too large for the server. Try a smaller picture.'
+          : msg || 'Could not update profile picture. Please try again.'
+      );
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -662,8 +1128,8 @@ export function SettingsModal() {
   ];
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowSettings(false)}>
-      <div className="il-scale-in" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd)', borderRadius: 'var(--r-xl)', width: 680, maxHeight: '80vh', display: 'flex', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.7)' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ width: 200, background: 'var(--bg-hover)', borderRight: '1px solid var(--bd)', padding: '16px 8px', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div className="il-scale-in il-modal-settings" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd)', borderRadius: 'var(--r-xl)', width: 680, maxHeight: '80vh', display: 'flex', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.7)' }} onClick={(e) => e.stopPropagation()}>
+        <div data-settings-tabs style={{ width: 200, background: 'var(--bg-hover)', borderRight: '1px solid var(--bd)', padding: '16px 8px', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '8px 12px', marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Settings</div>
           </div>
@@ -672,6 +1138,7 @@ export function SettingsModal() {
             return (
               <button
                 key={id}
+                data-active={activeTab === id ? 'true' : 'false'}
                 onClick={() => setActiveTab(id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', borderRadius: 'var(--r)', border: 'none', cursor: 'pointer', background: activeTab === id ? 'var(--bg-active)' : 'transparent', color: activeTab === id ? 'var(--t1)' : 'var(--t2)', fontSize: 13, fontWeight: activeTab === id ? 600 : 400, textAlign: 'left', transition: 'all .12s', borderLeft: activeTab === id ? '2px solid var(--primary)' : '2px solid transparent', marginLeft: -2 }}
               >
@@ -687,7 +1154,7 @@ export function SettingsModal() {
             <Ic.LogOut s={15} /> Log out
           </button>
         </div>
-        <div style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+        <div data-settings-body style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{tabs.find((t) => t[0] === activeTab)?.[2]}</h2>
             <button
@@ -700,10 +1167,48 @@ export function SettingsModal() {
           {activeTab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: 'var(--bg-hover)', borderRadius: 'var(--r-lg)', border: '1px solid var(--bd)' }}>
-                <Avatar user={me} size={56} />
-                <div>
+                <div style={{ position: 'relative' }}>
+                  <Avatar user={me} size={64} />
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    title="Change profile picture"
+                    style={{
+                      position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: '50%',
+                      background: 'var(--primary)', color: '#fff', border: '2px solid var(--bg-elv)',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Ic.Camera s={13} />
+                  </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    // Explicit extensions in addition to MIME types so the OS
+                    // picker on every platform highlights .jpg/.jpeg/.png/.webp
+                    // even when its MIME-type mapping is missing.
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarFile(f); e.target.value = ''; }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{me.name}</div>
                   <div style={{ fontSize: 13, color: 'var(--t3)' }}>{me.role} · @{me.username}</div>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarStatus === 'saving'}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r)', border: '1px solid var(--bd2)', background: 'var(--bg-elv)', color: 'var(--t1)', fontSize: 12.5, fontWeight: 600, cursor: avatarStatus === 'saving' ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                    >
+                      <Ic.Upload s={13} /> {avatarStatus === 'saving' ? 'Uploading…' : 'Upload picture'}
+                    </button>
+                    {avatarStatus === 'ok' && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)' }}>Profile picture updated — everyone will see this.</span>
+                    )}
+                    {avatarStatus === 'error' && (
+                      <span style={{ fontSize: 12, color: 'var(--err)' }}>{avatarError}</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -720,6 +1225,7 @@ export function SettingsModal() {
               </div>
             </div>
           )}
+          {activeTab === 'audio' && <AudioVideoSettings />}
           {activeTab === 'appearance' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
@@ -791,7 +1297,7 @@ export function SettingsModal() {
               </form>
             </div>
           )}
-          {activeTab !== 'profile' && activeTab !== 'appearance' && activeTab !== 'security' && (
+          {activeTab !== 'profile' && activeTab !== 'appearance' && activeTab !== 'security' && activeTab !== 'audio' && (
             <div style={{ color: 'var(--t3)', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>This settings section is coming soon.</div>
           )}
         </div>
@@ -800,13 +1306,325 @@ export function SettingsModal() {
   );
 }
 
+/* ── Audio & Video device check ──────────────────────────── */
+/** Settings panel that lets the user verify their cam/mic/speaker and pick
+ *  which physical device each call should use. Selections are stored in
+ *  localStorage so getUserMedia in the call panel can opt-in to them later.
+ *
+ *  Bluetooth headsets typically appear as separate input + output devices —
+ *  switching between system speakers and a paired headset is just a matter
+ *  of picking the right entry in the dropdowns. */
+function AudioVideoSettings() {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [permError, setPermError] = useState<string | null>(null);
+  const [camId, setCamId] = useState<string>(() => localStorage.getItem('il-pref-cam') || '');
+  const [micId, setMicId] = useState<string>(() => localStorage.getItem('il-pref-mic') || '');
+  const [spkId, setSpkId] = useState<string>(() => localStorage.getItem('il-pref-spk') || '');
+  const [camActive, setCamActive] = useState(false);
+  const [micActive, setMicActive] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [testingSpeaker, setTestingSpeaker] = useState(false);
+  const [spkError, setSpkError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const camStreamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioRafRef = useRef<number | null>(null);
+  const testAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const refreshDevices = useCallback(async () => {
+    try {
+      const list = await navigator.mediaDevices.enumerateDevices();
+      setDevices(list);
+      setPermError(null);
+    } catch (e: any) {
+      setPermError(e?.message || 'Unable to list devices.');
+    }
+  }, []);
+
+  // Initial enumerate — labels are blank until the user grants permission,
+  // so we trigger a tiny getUserMedia to unlock them and then enumerate again.
+  useEffect(() => {
+    (async () => {
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        probe.getTracks().forEach((t) => t.stop());
+      } catch {
+        setPermError('Permission to access camera / microphone was denied. Allow access in your browser to test devices.');
+      }
+      await refreshDevices();
+    })();
+    const onChange = () => refreshDevices();
+    navigator.mediaDevices?.addEventListener?.('devicechange', onChange);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.('devicechange', onChange);
+    };
+  }, [refreshDevices]);
+
+  // Tear down on unmount so the OS tally light isn't left on.
+  useEffect(() => () => {
+    camStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    if (audioRafRef.current != null) cancelAnimationFrame(audioRafRef.current);
+    audioCtxRef.current?.close().catch(() => undefined);
+    if (testAudioRef.current) { testAudioRef.current.pause(); testAudioRef.current.src = ''; }
+  }, []);
+
+  const cams = devices.filter((d) => d.kind === 'videoinput');
+  const mics = devices.filter((d) => d.kind === 'audioinput');
+  const spks = devices.filter((d) => d.kind === 'audiooutput');
+
+  const startCameraTest = async () => {
+    setCamError(null);
+    try {
+      camStreamRef.current?.getTracks().forEach((t) => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: camId ? { deviceId: { exact: camId } } : true,
+        audio: false,
+      });
+      camStreamRef.current = stream;
+      // Flip camActive FIRST so the <video> element gets mounted; the effect
+      // below then binds srcObject the moment the element exists. The previous
+      // implementation tried to bind directly inside this handler, but
+      // videoRef.current was null because the element was rendered behind
+      // {camActive && <video />} — the bind silently no-op'd and the user
+      // saw a black tile despite the stream being live.
+      setCamActive(true);
+    } catch (e: any) {
+      setCamError(e?.message || 'Could not start the camera.');
+      setCamActive(false);
+    }
+  };
+
+  // Bind the active stream to the <video> as soon as both exist. Runs every
+  // time camActive or the stream object changes, which is what fixes the
+  // "Test camera" tile staying blank — see comment in startCameraTest.
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (camActive && camStreamRef.current) {
+      el.srcObject = camStreamRef.current;
+      el.play().catch(() => undefined);
+    } else {
+      el.srcObject = null;
+    }
+  }, [camActive]);
+
+  const stopCameraTest = () => {
+    camStreamRef.current?.getTracks().forEach((t) => t.stop());
+    camStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCamActive(false);
+  };
+
+  const startMicTest = async () => {
+    setMicError(null);
+    try {
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: micId ? { deviceId: { exact: micId } } : true,
+        video: false,
+      });
+      micStreamRef.current = stream;
+      const AC: typeof AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteTimeDomainData(data);
+        let peak = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = Math.abs(data[i] - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        setMicLevel(peak);
+        audioRafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+      setMicActive(true);
+    } catch (e: any) {
+      setMicError(e?.message || 'Could not access the microphone.');
+      setMicActive(false);
+    }
+  };
+
+  const stopMicTest = () => {
+    if (audioRafRef.current != null) { cancelAnimationFrame(audioRafRef.current); audioRafRef.current = null; }
+    audioCtxRef.current?.close().catch(() => undefined);
+    audioCtxRef.current = null;
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    setMicActive(false);
+    setMicLevel(0);
+  };
+
+  const testSpeaker = async () => {
+    setSpkError(null);
+    setTestingSpeaker(true);
+    try {
+      const el = testAudioRef.current ?? (testAudioRef.current = new Audio('/ringtone.mp3'));
+      el.loop = false;
+      el.currentTime = 0;
+      el.volume = 0.8;
+      const anyEl = el as any;
+      // setSinkId is Chromium-only; gracefully skip on browsers that lack it
+      // (Firefox/Safari) and play through the system default instead.
+      if (spkId && typeof anyEl.setSinkId === 'function') {
+        try { await anyEl.setSinkId(spkId); } catch { /* fall through */ }
+      }
+      await el.play();
+      el.onended = () => setTestingSpeaker(false);
+      // Hard stop after 4s in case the asset is unexpectedly long.
+      setTimeout(() => { try { el.pause(); el.currentTime = 0; } catch { /* noop */ } setTestingSpeaker(false); }, 4000);
+    } catch (e: any) {
+      setSpkError(e?.message || 'Could not play through the selected output.');
+      setTestingSpeaker(false);
+    }
+  };
+
+  const persistAndSet = (kind: 'cam' | 'mic' | 'spk', id: string) => {
+    if (kind === 'cam') { setCamId(id); localStorage.setItem('il-pref-cam', id); if (camActive) startCameraTest(); }
+    if (kind === 'mic') { setMicId(id); localStorage.setItem('il-pref-mic', id); if (micActive) startMicTest(); }
+    if (kind === 'spk') { setSpkId(id); localStorage.setItem('il-pref-spk', id); }
+  };
+
+  const supportsSinkId = typeof (HTMLAudioElement.prototype as any).setSinkId === 'function';
+
+  const fieldStyle: CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 'var(--r)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', color: 'var(--t1)', fontSize: 13, outline: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" };
+  const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6, display: 'block' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      {permError && (
+        <div style={{ fontSize: 13, color: 'var(--err)', background: 'var(--err-dim)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 'var(--r)', padding: '8px 12px' }}>
+          {permError}
+        </div>
+      )}
+
+      {/* Camera */}
+      <div>
+        <label style={labelStyle}>Camera</label>
+        <select
+          style={fieldStyle}
+          value={camId}
+          onChange={(e) => persistAndSet('cam', e.target.value)}
+        >
+          <option value="">System default</option>
+          {cams.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0, 6)}`}</option>)}
+        </select>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          {!camActive ? (
+            <button onClick={startCameraTest} style={primaryBtnStyle}><Ic.Camera s={14} /> Test camera</button>
+          ) : (
+            <button onClick={stopCameraTest} style={ghostBtnStyle}><Ic.X s={14} /> Stop test</button>
+          )}
+        </div>
+        <div style={{ position: 'relative', marginTop: 10, width: '100%', aspectRatio: '16 / 9', background: '#000', borderRadius: 'var(--r-lg)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--bd)' }}>
+          {/* The <video> element is ALWAYS mounted so the ref is bindable
+              the instant a stream arrives. Showing the placeholder via CSS
+              when camActive=false keeps the camera-test feature working
+              (was broken because ref was null when srcObject got set). */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: camActive ? 'block' : 'none' }}
+          />
+          {!camActive && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,.55)', fontSize: 12.5 }}>
+              Click "Test camera" to preview
+            </div>
+          )}
+        </div>
+        {camError && <div style={{ fontSize: 12, color: 'var(--err)', marginTop: 6 }}>{camError}</div>}
+      </div>
+
+      {/* Microphone */}
+      <div>
+        <label style={labelStyle}>Microphone</label>
+        <select
+          style={fieldStyle}
+          value={micId}
+          onChange={(e) => persistAndSet('mic', e.target.value)}
+        >
+          <option value="">System default</option>
+          {mics.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${d.deviceId.slice(0, 6)}`}</option>)}
+        </select>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {!micActive ? (
+            <button onClick={startMicTest} style={primaryBtnStyle}><Ic.Mic s={14} /> Test microphone</button>
+          ) : (
+            <button onClick={stopMicTest} style={ghostBtnStyle}><Ic.X s={14} /> Stop test</button>
+          )}
+          {micActive && (
+            <span style={{ fontSize: 12, color: 'var(--t3)' }}>Speak now — bar should move:</span>
+          )}
+        </div>
+        <div style={{ marginTop: 10, height: 14, borderRadius: 7, background: 'var(--bg-hover)', overflow: 'hidden', border: '1px solid var(--bd)' }}>
+          <div style={{
+            width: `${Math.min(100, Math.round(micLevel * 100 * 2))}%`,
+            height: '100%',
+            background: micLevel > 0.05 ? 'var(--ok)' : 'var(--bd2)',
+            transition: 'width .08s linear',
+          }} />
+        </div>
+        {micError && <div style={{ fontSize: 12, color: 'var(--err)', marginTop: 6 }}>{micError}</div>}
+      </div>
+
+      {/* Speaker / output */}
+      <div>
+        <label style={labelStyle}>Audio output {!supportsSinkId && <span style={{ color: 'var(--warn)', textTransform: 'none', fontWeight: 400 }}>· Output picking is unsupported in this browser — system default will be used.</span>}</label>
+        <select
+          style={fieldStyle}
+          value={spkId}
+          onChange={(e) => persistAndSet('spk', e.target.value)}
+          disabled={!supportsSinkId}
+        >
+          <option value="">System default</option>
+          {spks.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || `Speakers ${d.deviceId.slice(0, 6)}`}</option>)}
+        </select>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <button onClick={testSpeaker} disabled={testingSpeaker} style={primaryBtnStyle}>
+            <Ic.Headphones s={14} /> {testingSpeaker ? 'Playing…' : 'Play test tone'}
+          </button>
+          <button onClick={refreshDevices} style={ghostBtnStyle}><Ic.Refresh s={14} /> Refresh devices</button>
+        </div>
+        {spkError && <div style={{ fontSize: 12, color: 'var(--err)', marginTop: 6 }}>{spkError}</div>}
+        <div style={{ fontSize: 11.5, color: 'var(--t3)', marginTop: 8, lineHeight: 1.5 }}>
+          Connected a Bluetooth headset? It will show up here as a separate input + output device. Pick it from the dropdowns above to use it for calls.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const primaryBtnStyle: CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px',
+  borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
+  background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 12.5,
+  fontFamily: "'DM Sans',sans-serif",
+};
+const ghostBtnStyle: CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px',
+  borderRadius: 'var(--r)', border: '1px solid var(--bd2)', cursor: 'pointer',
+  background: 'var(--bg-hover)', color: 'var(--t1)', fontWeight: 600, fontSize: 12.5,
+  fontFamily: "'DM Sans',sans-serif",
+};
+
 /* ── Tweaks Panel (design tooling only) ──────────────────── */
 const ACCENTS: { id: Accent; label: string; color: string }[] = [
-  { id: 'violet', label: 'Violet', color: '#8b5cf6' },
-  { id: 'rose', label: 'Rose', color: '#f43f5e' },
-  { id: 'emerald', label: 'Emerald', color: '#10b981' },
-  { id: 'amber', label: 'Amber', color: '#f59e0b' },
-  { id: 'coral', label: 'Coral', color: '#f97316' },
+  { id: 'gold', label: 'Gold', color: '#c9a85c' },
+  { id: 'rose', label: 'Rose', color: '#b5546a' },
+  { id: 'emerald', label: 'Emerald', color: '#2f8f6b' },
+  { id: 'amber', label: 'Amber', color: '#cc9a3e' },
+  { id: 'coral', label: 'Coral', color: '#c2683f' },
 ];
 
 export function TweaksPanel() {
@@ -843,11 +1661,27 @@ export function TweaksPanel() {
   return (
     <div
       ref={panelRef}
-      className="il-scale-in"
+      className="il-scale-in il-tweaks-panel"
       onMouseDown={onMouseDown}
-      style={{ position: 'fixed', ...panelPos, zIndex: 9999, width: 260, background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', boxShadow: '0 20px 60px rgba(0,0,0,.6)', overflow: 'hidden', cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+      // Glass / transparent treatment requested by the user: the previous
+      // build had a solid bg-elv background that read "bold" in both themes.
+      // We now render a translucent surface with backdrop-blur so it sits
+      // unobtrusively on top of either the dark or light app shell, matching
+      // the original design intent.
+      style={{
+        position: 'fixed', ...panelPos, zIndex: 9999, width: 260,
+        background: 'transparent',
+        backdropFilter: 'blur(18px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+        border: '1px solid var(--bd)',
+        borderRadius: 'var(--r-xl)',
+        boxShadow: '0 16px 48px rgba(0,0,0,.35)',
+        overflow: 'hidden',
+        cursor: dragging ? 'grabbing' : 'grab',
+        userSelect: 'none',
+      }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bd)', background: 'var(--bg-hover)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bd)', background: 'transparent' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <Ic.Zap s={14} c="var(--primary)" />
           <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Tweaks</span>

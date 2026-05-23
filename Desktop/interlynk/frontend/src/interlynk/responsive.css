@@ -1,0 +1,366 @@
+/* InterLynk — production responsive layer.
+   Targets the structural class names added to the live components:
+     .il-app .il-rail .il-sidebar .il-main .il-topbar
+     .il-callpanel .il-modal .il-login
+   Inline styles win on specificity, so width/position overrides use !important
+   where they must beat a hard-coded pixel value. The rules below scale the UI
+   across phones, tablets, laptops, desktops, and TVs without changing any
+   realtime/call logic. */
+
+/* ────────────────────────────────────────────────────────────────────────
+   1. Base + safe-area padding so the UI doesn't hide under notches/home bars.
+   ──────────────────────────────────────────────────────────────────────── */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  height: 100dvh; /* dynamic viewport — accounts for mobile URL bar */
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#root {
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* Bigger touch targets on coarse pointers (touch). */
+@media (pointer: coarse) {
+  button, [role="button"], a, input, textarea, select {
+    touch-action: manipulation;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   2. App container — full-viewport flex root.
+   ──────────────────────────────────────────────────────────────────────── */
+.il-app {
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   3. TV / 4K / ultrawide — scale tokens up so the UI doesn't look tiny.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1920px) {
+  :root {
+    --rail-w: 76px;
+    --side-w: 280px;
+    --right-w: 320px;
+    --topbar-h: 60px;
+  }
+  body { font-size: 16px; }
+}
+@media (min-width: 2560px) {
+  :root {
+    --rail-w: 88px;
+    --side-w: 320px;
+    --right-w: 360px;
+    --topbar-h: 68px;
+  }
+  body { font-size: 17px; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   4. Tablet (portrait + small landscape) — tighten gutters, shrink panels.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  :root {
+    --rail-w: 60px;
+    --side-w: 230px;
+    --right-w: 280px;
+    --topbar-h: 50px;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   5. Mobile (≤768px) — sidebars become OVERLAY drawers, rail collapses.
+   Inline width:'var(--rail-w)' etc. is preserved; we promote the panels
+   to position:fixed so they float over the chat.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --side-w: 84vw;
+    --right-w: 92vw;
+    --topbar-h: 54px;
+  }
+
+  /* Workspace rail (the leftmost ultra-narrow column) — hide on mobile
+     to free horizontal space. The hamburger in the TopBar takes over. */
+  .il-rail {
+    display: none !important;
+  }
+
+  /* Sidebar becomes a slide-in overlay */
+  .il-sidebar {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 4500;
+    width: var(--side-w) !important;
+    max-width: 340px;
+    box-shadow: 0 0 40px rgba(0,0,0,.45);
+    transform: translateX(0);
+    transition: transform .22s ease;
+  }
+  /* Hidden state: .il-sidebar.is-hidden — added by JS when sideOpen=false.
+     Because Sidebar.tsx returns null when sideOpen is false we instead
+     toggle a body-level flag and use the data-mobile-sideopen attribute. */
+  .il-app[data-mobile-sideopen="false"] .il-sidebar {
+    transform: translateX(-105%);
+  }
+
+  /* Right-side thread panel: also overlay on mobile (full width minus a strip). */
+  .il-thread {
+    position: fixed !important;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 4500;
+    width: var(--right-w) !important;
+    max-width: 380px;
+    box-shadow: 0 0 40px rgba(0,0,0,.45);
+  }
+
+  /* Mobile backdrop, only shown when sidebar is open */
+  .il-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 4400;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Topbar tightens up on mobile */
+  .il-topbar {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    gap: 4px !important;
+  }
+  /* Hide the channel description on mobile — title only. */
+  .il-topbar [data-desc] {
+    display: none !important;
+  }
+  /* Mobile: condense topbar action group — only most important icons. */
+  .il-topbar [data-topbar-action="dim"] { display: none !important; }
+
+  /* Notifications popover full-width on mobile */
+  .il-notif-pop {
+    position: fixed !important;
+    top: var(--topbar-h) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  /* All modals → near-fullscreen on mobile */
+  .il-modal-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 92vh !important;
+    border-radius: 14px !important;
+  }
+  .il-modal-settings {
+    flex-direction: column !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .il-modal-settings > [data-settings-tabs] {
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--bd) !important;
+    padding: 8px 4px !important;
+    flex-shrink: 0 !important;
+  }
+  .il-modal-settings > [data-settings-tabs] button {
+    flex-shrink: 0 !important;
+    border-left: none !important;
+    border-bottom: 2px solid transparent !important;
+  }
+  .il-modal-settings > [data-settings-tabs] button[data-active="true"] {
+    border-left: none !important;
+    border-bottom: 2px solid var(--primary) !important;
+  }
+  .il-modal-settings > [data-settings-body] {
+    padding: 16px !important;
+  }
+
+  /* Login: stack vertically, hide marketing panel */
+  .il-login {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .il-login-left {
+    display: none !important;
+  }
+  .il-login-right {
+    width: 100% !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    border-left: none !important;
+    padding: 24px 18px !important;
+  }
+
+  /* Incoming-call card: anchor at bottom-center and full-width-ish */
+  .il-incoming-card {
+    width: calc(100vw - 24px) !important;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+  .il-incoming-wrap {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 16px !important;
+  }
+
+  /* Call panel — compact controls */
+  .il-callpanel-controls button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .il-callpanel-controls [data-hangup] {
+    width: 56px !important;
+    height: 44px !important;
+  }
+  .il-callpanel-header {
+    padding: 10px 12px !important;
+    gap: 6px !important;
+    flex-wrap: wrap;
+  }
+  .il-callpanel-header [data-audio-diag] {
+    display: none !important;
+  }
+  .il-callpanel-stage {
+    padding: 10px !important;
+  }
+  /* Thumbnail tiles smaller on phones */
+  .il-callpanel-stage [data-thumb] {
+    width: 38vw !important;
+    max-width: 160px !important;
+    height: auto !important;
+    aspect-ratio: 16 / 10;
+  }
+
+  /* DM/Chat input padding tighter */
+  .il-chat-input-wrap {
+    padding: 0 10px 10px !important;
+  }
+  /* Messages padding tighter */
+  .il-chat-msg {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  /* Scheduled calls modal full-screen */
+  .il-sched-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Tweaks panel — anchor to top so it doesn't sit under thumb keyboard */
+  .il-tweaks-panel {
+    width: calc(100vw - 24px) !important;
+    max-width: 340px;
+    bottom: 12px !important;
+    right: 12px !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   6. Small mobile (≤480px) — even tighter, larger touch targets.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  :root {
+    --topbar-h: 56px;
+  }
+  .il-callpanel-controls button {
+    width: 42px !important;
+    height: 42px !important;
+  }
+  .il-callpanel-controls [data-hangup] {
+    width: 52px !important;
+    height: 42px !important;
+  }
+  /* Profile card — wider on phones */
+  .il-profile-card {
+    width: 92vw !important;
+    max-width: 92vw !important;
+  }
+  /* New-message modal — wider on phones */
+  .il-newmsg-modal {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+  /* Invite-to-channel modal */
+  .il-invite-modal {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+  /* Hide tooltip on touch */
+  .il-topbar svg, .il-rail svg {
+    pointer-events: none;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   7. Landscape phone (short height) — collapse heavy chrome.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --topbar-h: 44px;
+  }
+  .il-callpanel-header {
+    padding: 6px 10px !important;
+  }
+  .il-callpanel-controls {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   8. Reduced motion — respect user preference.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   9. Image / video / inputs — never overflow the viewport.
+   ──────────────────────────────────────────────────────────────────────── */
+img, video { max-width: 100%; height: auto; }
+input, textarea, select { font-size: 16px; } /* prevents iOS zoom-on-focus */
+@media (min-width: 768px) {
+  input, textarea, select { font-size: inherit; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   10. Print/forgotten edge case — long unbreakable strings shouldn't blow
+   out the layout in narrow chat columns.
+   ──────────────────────────────────────────────────────────────────────── */
+.il-chat-msg, .il-dm-bubble {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

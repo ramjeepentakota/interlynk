@@ -30,7 +30,11 @@ public class User {
     @Column(name = "display_name", length = 100)
     private String displayName;
     
-    @Column(name = "avatar_url", length = 500)
+    // Stored as TEXT so the column can hold either a public URL OR a
+    // base64-encoded data: URL for the avatar (resized client-side to ~256px JPEG,
+    // typically ~20-30 KB encoded). The original length=500 cap rejected every
+    // data: URL upload and was the root cause of "profile pic does not upload".
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
     
     @Enumerated(EnumType.STRING)
