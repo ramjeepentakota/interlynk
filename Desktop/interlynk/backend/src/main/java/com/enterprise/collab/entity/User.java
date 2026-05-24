@@ -86,6 +86,13 @@ public class User {
     @Column(name = "mfa_enrolled_at")
     private LocalDateTime mfaEnrolledAt;
 
+    /**
+     * Bcrypt-hashed one-time backup codes, comma-separated. Each hash is consumed
+     * (removed from the CSV) on successful use during a TOTP-challenge login.
+     */
+    @Column(name = "mfa_backup_codes", columnDefinition = "TEXT")
+    private String mfaBackupCodes;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     

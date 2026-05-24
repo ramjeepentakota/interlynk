@@ -19,8 +19,9 @@ import {
 export function TopBar() {
   const {
     activeChannel, sideOpen, setSideOpen, theme, setTheme,
-    showNotif, setShowNotif, setShowSettings, channels, currentUser,
+    showNotif, setShowNotif, channels,
     startChannelCall, unreadCount,
+    currentUser, setShowSettings, openProfile,
   } = useApp();
   const ch = (channels || []).find((c) => c.id === activeChannel);
   const title = ch ? ch.name : 'Narada';
@@ -28,7 +29,7 @@ export function TopBar() {
   const isAnnouncement = ch?.type === 'announcement';
 
   return (
-    <div className="il-topbar" style={{ height: 'var(--topbar-h)', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', paddingLeft: 14, paddingRight: 14, gap: 8, flexShrink: 0, zIndex: 10 }}>
+    <div className="il-topbar" style={{ height: 'var(--topbar-h)', background: 'var(--bg-main)', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', paddingLeft: 18, paddingRight: 14, gap: 10, flexShrink: 0, zIndex: 10 }}>
       <Tip label={sideOpen ? 'Hide sidebar' : 'Show sidebar'}>
         <button
           onClick={() => setSideOpen(!sideOpen)}
@@ -42,12 +43,12 @@ export function TopBar() {
         </button>
       </Tip>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        {ch && <span style={{ color: 'var(--t3)' }}>{ch.type === 'announcement' ? <Ic.Megaphone s={16} /> : ch.locked ? <Ic.Lock s={16} /> : <Ic.Hash s={16} />}</span>}
-        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        {ch && <span style={{ color: 'var(--t3)', display: 'flex' }}>{ch.type === 'announcement' ? <Ic.Megaphone s={16} /> : ch.locked ? <Ic.Lock s={16} /> : <Ic.Hash s={16} />}</span>}
+        <span className="h-display" style={{ fontWeight: 600, fontSize: 16, color: 'var(--t1)', letterSpacing: '-0.01em' }}>{title}</span>
         {desc && (
           <>
-            <div data-desc style={{ width: 1, height: 16, background: 'var(--bd2)' }} />
+            <div data-desc style={{ width: 1, height: 14, background: 'var(--bd2)', margin: '0 4px' }} />
             <span data-desc style={{ fontSize: 12.5, color: 'var(--t3)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
           </>
         )}
@@ -55,9 +56,11 @@ export function TopBar() {
 
       <div style={{ flex: 1 }} />
 
-      <InlinePeopleSearch />
+      <div data-topbar-action="dim" style={{ display: 'flex' }}>
+        <InlinePeopleSearch />
+      </div>
 
-      <div style={{ width: 1, height: 20, background: 'var(--bd)', margin: '0 2px' }} />
+      <div data-topbar-action="dim" style={{ width: 1, height: 20, background: 'var(--bd)', margin: '0 2px' }} />
       {!isAnnouncement && activeChannel && (
         <>
           <Tip label="Group Voice Call">
@@ -95,14 +98,16 @@ export function TopBar() {
         </button>
       </Tip>
 
-      <Tip label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
-        >
-          {theme === 'dark' ? <Ic.Sun s={16} /> : <Ic.Moon s={16} />}
-        </button>
-      </Tip>
+      <div data-topbar-action="dim" style={{ display: 'flex' }}>
+        <Tip label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
+          >
+            {theme === 'dark' ? <Ic.Sun s={16} /> : <Ic.Moon s={16} />}
+          </button>
+        </Tip>
+      </div>
 
       <Tip label="Notifications">
         <div style={{ position: 'relative', display: 'inline-flex' }}>
@@ -118,12 +123,27 @@ export function TopBar() {
         </div>
       </Tip>
 
-      <div
-        onClick={() => setShowSettings(true)}
-        style={{ cursor: 'pointer', borderRadius: '50%' }}
-      >
-        <Avatar user={currentUser || { name: '?' }} size={30} showStatus />
-      </div>
+      <Tip label="Settings">
+        <button
+          aria-label="Settings"
+          onClick={() => setShowSettings(true)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
+        >
+          <Ic.Gear s={16} />
+        </button>
+      </Tip>
+
+      {currentUser && (
+        <Tip label="My profile">
+          <button
+            aria-label="My profile"
+            onClick={() => openProfile(currentUser)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, borderRadius: '50%', display: 'flex' }}
+          >
+            <Avatar user={currentUser} size={28} showStatus />
+          </button>
+        </Tip>
+      )}
 
       {showNotif && <NotificationsPopover />}
     </div>
@@ -133,17 +153,34 @@ export function TopBar() {
 /* ── Notifications popover ───────────────────────────────── */
 function NotificationsPopover() {
   const { notifications, markAllNotificationsRead, setShowNotif } = useApp();
+  const popRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside the popover
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) {
+        setShowNotif(false);
+      }
+    };
+    // Use setTimeout so this listener doesn't fire on the same click that opened the popover
+    const id = setTimeout(() => document.addEventListener('mousedown', onDoc), 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('mousedown', onDoc);
+    };
+  }, [setShowNotif]);
+
   return (
-    <div className="il-scale-in il-notif-pop" style={{ position: 'absolute', top: 'calc(var(--topbar-h) - 4px)', right: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.5)', zIndex: 300 }}>
+    <div ref={popRef} className="il-scale-in il-notif-pop" style={{ position: 'absolute', top: 'calc(var(--topbar-h) - 4px)', right: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.5)', zIndex: 300 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--bd)' }}>
         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Notifications</span>
-        <button onClick={() => { markAllNotificationsRead(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-link)', fontSize: 12, fontWeight: 600 }}>Mark all read</button>
+        <button onClick={() => { markAllNotificationsRead(); setShowNotif(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-link)', fontSize: 12, fontWeight: 600 }}>Mark all read</button>
       </div>
       {notifications.length === 0 ? (
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>You're all caught up 🎉</div>
       ) : (
         notifications.map((n) => (
-          <div key={n.id} style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', background: n.isRead ? 'transparent' : 'var(--primary-dim)' }}>
+          <div key={n.id} onClick={() => setShowNotif(false)} style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', background: n.isRead ? 'transparent' : 'var(--primary-dim)', cursor: 'pointer' }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>{n.title}</div>
             <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>{n.message}</div>
           </div>
@@ -233,7 +270,15 @@ function MsgItem({ msg, isFirst, channelId }: { msg: Message; isFirst: boolean; 
         )}
 
         {msg.poll && (
-          <PollCard poll={msg.poll} onVote={(optionIds) => votePoll(channelId, msg.poll!.id, optionIds)} />
+          <PollCard
+            poll={msg.poll}
+            onVote={(optionIds) => votePoll(channelId, msg.poll!.id, optionIds)}
+            onPollEnd={!isMe ? () => {
+              window.dispatchEvent(new CustomEvent('il-toast', {
+                detail: { title: 'Poll ended', message: `"${msg.poll!.question}" — results are now final.`, tone: 'info' },
+              }));
+            } : undefined}
+          />
         )}
 
         {msg.attachments && msg.attachments.length > 0 && (
@@ -373,13 +418,12 @@ export function ChatPanel() {
   const msgList = (channelId && messages[channelId]) || [];
   const ch = (channels || []).find((c) => c.id === activeChannel);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-  }, [channelId]);
+  const jumpToBottom = () => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  };
 
-  useEffect(() => {
-    if (!showJumpDown) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgList.length, showJumpDown]);
+  useEffect(() => { jumpToBottom(); }, [channelId]);
+  useEffect(() => { if (!showJumpDown) jumpToBottom(); }, [msgList.length, showJumpDown]);
 
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -408,7 +452,7 @@ export function ChatPanel() {
           <Ic.Msg s={28} c="var(--primary)" />
         </div>
         <div style={{ position: 'relative', textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 6 }}>Welcome to Narada</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', marginBottom: 6 }}>Welcome to Narada</div>
           <div style={{ fontSize: 14, color: 'var(--t3)', maxWidth: 340, lineHeight: 1.6 }}>Select a channel from the sidebar to start collaborating with your team.</div>
         </div>
       </div>
@@ -422,7 +466,7 @@ export function ChatPanel() {
           <div style={{ width: 56, height: 56, borderRadius: 'var(--r-xl)', background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
             {ch?.type === 'announcement' ? <Ic.Megaphone s={26} c="var(--primary)" /> : <Ic.Hash s={26} c="var(--primary)" />}
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", marginBottom: 4 }}>Welcome to #{ch?.name || channelId}!</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', marginBottom: 4 }}>Welcome to #{ch?.name || channelId}!</h2>
           <p style={{ fontSize: 14, color: 'var(--t2)', maxWidth: 480 }}>{ch?.description || 'This is the start of the channel.'}</p>
         </div>
 
@@ -509,7 +553,7 @@ function ThreadPanel() {
   return (
     <div className="il-slide-l il-thread" style={{ width: 'var(--right-w)', background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0 }}>
       <div style={{ padding: '0 14px', height: 'var(--topbar-h)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--bd)' }}>
-        <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "'Outfit',sans-serif" }}>Thread</span>
+        <span style={{ fontWeight: 700, fontSize: 14, fontFamily: 'var(--ff-display)' }}>Thread</span>
         <button
           onClick={() => setThreadMsg(null)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 5, borderRadius: 6, display: 'flex' }}
@@ -554,7 +598,7 @@ function ThreadPanel() {
             onChange={(e) => setReply(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') sendReply(); }}
             placeholder="Reply in thread…"
-            style={{ flex: 1, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '8px 10px', fontSize: 13, color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ flex: 1, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '8px 10px', fontSize: 13, color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
           />
           <button
             onClick={sendReply}

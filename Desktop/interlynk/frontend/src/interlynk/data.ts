@@ -78,6 +78,8 @@ export interface Poll {
   options: PollOption[];
   /** Option ids the current user has voted for. */
   votedOptionIds: string[];
+  /** ISO timestamp when the poll automatically closes (set by creator). */
+  expiresAt?: string;
 }
 
 export interface Message {
@@ -118,10 +120,12 @@ export const STATUS_LABELS: Record<string, string> = {
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
+/* Narada avatar palette — gold, jade, rust, navy and warm accents that sit
+   harmoniously on the deep-navy/ivory canvas. No purple. */
 const AVATAR_COLORS = [
-  '#8b5cf6', '#f43f5e', '#f59e0b', '#10b981',
-  '#ec4899', '#a78bfa', '#84cc16', '#06b6d4',
-  '#f97316', '#3b82f6',
+  '#d4a548', '#2c8f6f', '#c1502e', '#5d6bd4',
+  '#c84268', '#e2b462', '#3aa57a', '#a98026',
+  '#d97f2e', '#48a988',
 ];
 
 /** Deterministic accent colour from a stable id/username. */
@@ -278,6 +282,7 @@ export function mapPoll(dto: any): Poll {
     totalVotes: Number(dto.totalVotes ?? 0),
     options,
     votedOptionIds: (dto.votedOptionIds || []).map((id: any) => String(id)),
+    expiresAt: dto.expiresAt ?? undefined,
   };
 }
 
@@ -310,13 +315,40 @@ export function mapMessage(dto: any): Message {
   };
 }
 
+/** Decode __ATTACH__ / __POLL__ encoded DM content to a human-readable preview. */
+export function decodeDmPreview(content: string): string {
+  if (!content) return '';
+  if (content.startsWith('__ATTACH__')) {
+    try {
+      const { text, attachments } = JSON.parse(content.slice('__ATTACH__'.length));
+      if (text) return text;
+      if (attachments?.length) {
+        const a = attachments[0];
+        const ext = (a.fileName || '').split('.').pop()?.toLowerCase() || '';
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+        const isVideo = ['mp4', 'webm', 'mov', 'mkv'].includes(ext);
+        return isImage ? '📷 Photo' : isVideo ? '🎥 Video' : `📎 ${a.fileName || 'File'}`;
+      }
+    } catch { /* fall through */ }
+    return '📎 Attachment';
+  }
+  if (content.startsWith('__POLL__')) {
+    try {
+      const poll = JSON.parse(content.slice('__POLL__'.length));
+      return `📊 Poll: ${poll.question || ''}`;
+    } catch { /* fall through */ }
+    return '📊 Poll';
+  }
+  return content;
+}
+
 /** Maps a backend ChatDto.ConversationResponse to the UI Conversation. */
 export function mapConversation(dto: any): Conversation {
   const user = mapUser(dto.otherUser);
   return {
     userId: user.id,
     user,
-    lastMessage: dto.lastMessageContent ?? '',
+    lastMessage: decodeDmPreview(dto.lastMessageContent ?? ''),
     lastTime: formatTime(dto.lastMessageTime),
     lastTimeRaw: dto.lastMessageTime,
     unread: dto.unreadCount ?? 0,

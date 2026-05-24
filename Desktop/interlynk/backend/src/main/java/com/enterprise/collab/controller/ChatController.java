@@ -7,6 +7,7 @@ import com.enterprise.collab.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -313,13 +314,30 @@ public class ChatController {
     public ResponseEntity<byte[]> getFile(
             @PathVariable Long channelId,
             @PathVariable String filename) throws IOException {
-        
+
         String filePath = "attachments/" + channelId + "/" + filename;
         byte[] fileData = fileStorageService.readFile(filePath);
-        
+
+        // Strip the UUID prefix (stored as "uuid_originalname.ext") to get real extension
+        String originalName = filename.contains("_") ? filename.substring(filename.indexOf("_") + 1) : filename;
+
+        // Detect content type from original filename; default to octet-stream
+        MediaType contentType = MediaTypeFactory.getMediaType(originalName)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+        // Serve inline for images, PDFs, and plain text so browser can preview them;
+        // everything else gets an attachment disposition so the browser downloads it.
+        boolean previewable = contentType.isCompatibleWith(MediaType.IMAGE_JPEG)
+                || contentType.isCompatibleWith(MediaType.IMAGE_PNG)
+                || contentType.isCompatibleWith(MediaType.IMAGE_GIF)
+                || contentType.toString().startsWith("image/")
+                || contentType.isCompatibleWith(MediaType.APPLICATION_PDF)
+                || contentType.isCompatibleWith(MediaType.TEXT_PLAIN);
+        String disposition = previewable ? "inline" : "attachment";
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + originalName + "\"")
+                .contentType(contentType)
                 .body(fileData);
     }
 }

@@ -56,7 +56,7 @@ export function TeamsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, height: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", flex: 1 }}>Teams &amp; Channels</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', flex: 1 }}>Teams &amp; Channels</h2>
         <Btn size="sm" variant="primary" onClick={() => setShowCreate(true)}><Ic.Plus s={13} /> New team</Btn>
       </div>
 
@@ -144,7 +144,7 @@ function CreateTeamModal({ onClose, onCreated }: { onClose: () => void; onCreate
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: '92vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 18 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: "'Outfit',sans-serif" }}>Create team</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: 'var(--ff-display)' }}>Create team</div>
         {err && <div style={{ color: 'var(--err)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
         <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>Name</label>
         <input style={{ ...input, marginBottom: 10 }} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
@@ -282,7 +282,7 @@ function TeamDrawer({ team, onClose, onChanged }: { team: AdminTeam; onClose: ()
                     <tr key={m.userId}>
                       <td style={cell}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Avatar user={{ id: String(m.userId), name: m.displayName, color: '#8b5cf6' }} size={26} />
+                          <Avatar user={{ id: String(m.userId), name: m.displayName, color: '#d4a548' }} size={26} />
                           <div><div style={{ fontWeight: 600 }}>{m.displayName}</div><div style={{ fontSize: 11, color: 'var(--t3)' }}>@{m.username}</div></div>
                         </div>
                       </td>
@@ -342,7 +342,7 @@ export function ChannelsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, height: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", flex: 1 }}>Channels</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', flex: 1 }}>Channels</h2>
         <Btn size="sm" variant="primary" onClick={() => setShowCreate(true)}><Ic.Plus s={13} /> New channel</Btn>
       </div>
 
@@ -439,7 +439,7 @@ function CreateChannelModal({ onClose, onCreated }: { onClose: () => void; onCre
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 440, maxWidth: '92vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 18 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: "'Outfit',sans-serif" }}>Create channel</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: 'var(--ff-display)' }}>Create channel</div>
         {err && <div style={{ color: 'var(--err)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
         <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>Name</label>
         <input style={{ ...input, marginBottom: 10 }} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value.replace(/\s+/g, '-') })} autoFocus />
@@ -508,7 +508,7 @@ function ChannelMembersSection({ channelId }: { channelId: number }) {
         <div style={{ ...card, padding: 4, marginBottom: 10, maxHeight: 180, overflowY: 'auto' }}>
           {results.map((u) => (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 6px' }}>
-              <Avatar user={{ id: String(u.id), name: u.displayName, color: '#8b5cf6' }} size={26} />
+              <Avatar user={{ id: String(u.id), name: u.displayName, color: '#d4a548' }} size={26} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--t1)' }}>{u.displayName}</div>
                 <div style={{ fontSize: 11, color: 'var(--t3)' }}>@{u.username}</div>
@@ -525,7 +525,7 @@ function ChannelMembersSection({ channelId }: { channelId: number }) {
         {members.length === 0 && <div style={{ padding: 10, fontSize: 12.5, color: 'var(--t3)' }}>No members yet — only admins can access this channel.</div>}
         {members.map((m) => (
           <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 6px' }}>
-            <Avatar user={{ id: String(m.id), name: m.displayName, color: '#8b5cf6' }} size={26} />
+            <Avatar user={{ id: String(m.id), name: m.displayName, color: '#d4a548' }} size={26} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--t1)' }}>{m.displayName}</div>
               <div style={{ fontSize: 11, color: 'var(--t3)' }}>@{m.username}</div>
@@ -622,7 +622,7 @@ export function PoliciesView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, height: '100%', overflow: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", flex: 1 }}>Messaging Policies</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', flex: 1 }}>Messaging Policies</h2>
         <Btn size="sm" variant="primary" onClick={() => setCreating(true)}><Ic.Plus s={13} /> New policy</Btn>
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--t3)', marginTop: -8 }}>

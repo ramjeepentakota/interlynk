@@ -104,7 +104,9 @@ interface UseWebRTCReturn {
   preflightLocalMedia: () => Promise<MediaStream | null>;
   startCall: () => Promise<void>;
   acceptCall: (offer: RTCSessionDescriptionInit) => Promise<void>;
-  endCall: () => void;
+  /** Tear down the mesh peer connection. Pass silent=true during a 1:1→group
+   *  upgrade so the peer is NOT told the call ended (they migrate instead). */
+  endCall: (silent?: boolean) => void;
   toggleMute: () => void;
   toggleVideo: () => void;
   shareScreen: () => Promise<void>;
@@ -813,10 +815,14 @@ export function useWebRTC({
 
   // ─── Call Controls ───────────────────────────────────────────────────────────
 
-  const endCall = useCallback(() => {
+  const endCall = useCallback((silent = false) => {
     // Notify the other peer via signaling BEFORE we tear down (otherwise the
     // STOMP publish may race the cleanup and never go out).
-    sendSignal('call-ended', {});
+    // `silent` skips this — used when the 1:1 call is being UPGRADED to a group
+    // (SFU) call: we tear down the mesh peer connection locally but must NOT
+    // tell the peer the call ended, or their session would close instead of
+    // migrating to the group room.
+    if (!silent) sendSignal('call-ended', {});
 
     // Stop all local tracks
     localStreamRef.current?.getTracks().forEach((t) => {

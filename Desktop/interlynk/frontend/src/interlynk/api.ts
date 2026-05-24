@@ -9,6 +9,7 @@ import {
   callApi,
   dmApi,
   liveKitApi,
+  sfuApi,
 } from '@/api/client';
 import apiClient from '@/api/client';
 import { useAuthStore } from '@/store/useAppStore';
@@ -34,10 +35,23 @@ export interface AuthResult {
   raw: any;
 }
 
+/**
+ * Returned by {@link login} when the backend asks for a second factor before
+ * issuing tokens. The caller must show a code-entry UI and pass the same
+ * {@code mfaChallenge} back to {@link loginMfa}.
+ */
+export interface MfaChallengeResult {
+  mfaRequired: true;
+  mfaChallenge: string;
+  /** Display-only preview of the user so the UI can greet them while waiting for the code. */
+  user: User;
+}
+
+export type LoginResult = AuthResult | MfaChallengeResult;
+
 /* ── Auth ────────────────────────────────────────────────── */
 
-export async function login(username: string, password: string): Promise<AuthResult> {
-  const res = await authApi.login(username.trim(), password);
+function persistAuth(res: any): AuthResult {
   const { accessToken, refreshToken, user } = res.data;
   if (!accessToken || !user) throw new Error('Invalid response from server');
 
@@ -56,6 +70,28 @@ export async function login(username: string, password: string): Promise<AuthRes
   useAuthStore.getState().setUser(frontendUser as any);
   useAuthStore.getState().setTokens(accessToken, refreshToken);
   return { user: mapUser(user), raw: user };
+}
+
+export async function login(username: string, password: string, rememberMe?: boolean): Promise<LoginResult> {
+  const res = await authApi.login(username.trim(), password, rememberMe);
+  if (res.data?.mfaRequired) {
+    return {
+      mfaRequired: true,
+      mfaChallenge: res.data.mfaChallenge,
+      user: mapUser(res.data.user),
+    };
+  }
+  return persistAuth(res);
+}
+
+/**
+ * Stage 2 of MFA-protected sign-in. Sends the challenge + 6-digit code from
+ * the user's authenticator (or a backup code) and returns the full
+ * {@link AuthResult} on success.
+ */
+export async function loginMfa(mfaChallenge: string, code: string): Promise<AuthResult> {
+  const res = await authApi.loginMfa(mfaChallenge, code);
+  return persistAuth(res);
 }
 
 export async function fetchMe(): Promise<AuthResult> {
@@ -347,6 +383,15 @@ export async function joinCall(roomId: number): Promise<void> {
   await callApi.joinCall(String(roomId));
 }
 
+/** Add another user to an existing call room (rings them as a GROUP invite). */
+export async function inviteToCall(
+  roomId: number,
+  targetUserId: number,
+  callType: 'voice' | 'video'
+): Promise<void> {
+  await callApi.inviteToCall(roomId, targetUserId, callType);
+}
+
 export async function leaveCall(roomId: number): Promise<void> {
   try {
     await callApi.leaveCall(String(roomId));
@@ -358,6 +403,12 @@ export async function leaveCall(roomId: number): Promise<void> {
 export async function fetchCallParticipants(roomId: number): Promise<User[]> {
   const res = await callApi.getParticipants(String(roomId));
   return (res.data || []).map((p: any) => mapUser(p.user || p));
+}
+
+/** Upload a file for use in a direct message.
+ *  Uses the channel-0 upload bucket (no dedicated DM channel needed). */
+export async function uploadDmAttachment(file: File | Blob, filename?: string): Promise<Attachment> {
+  return uploadAttachment('0', file, filename);
 }
 
 /* ── Direct Messages (person-to-person inbox) ────────────── */
@@ -422,6 +473,27 @@ export async function fetchLiveKitToken(
   try {
     const res = await liveKitApi.getToken(room, canPublish);
     return res.data as LiveKitToken;
+  } catch {
+    return { configured: false };
+  }
+}
+
+/* ── Self-hosted mediasoup SFU (group calls) ─────────────── */
+
+export interface SfuToken {
+  configured: boolean;
+  url?: string;
+  token?: string;
+  identity?: string;
+}
+
+export async function fetchSfuToken(
+  room: string | number,
+  canPublish = true
+): Promise<SfuToken> {
+  try {
+    const res = await sfuApi.getToken(room, canPublish);
+    return res.data as SfuToken;
   } catch {
     return { configured: false };
   }

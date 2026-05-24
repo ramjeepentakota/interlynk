@@ -67,6 +67,10 @@ public class ScheduledCallDto {
         private String callType;
         private String status;
         private Long callRoomId;
+        /** Human-shareable code, e.g. "abc-defg-hij". */
+        private String meetingCode;
+        /** Shareable relative join URL: "/join/{meetingCode}". */
+        private String meetingLink;
         private Long createdByUserId;
         private String createdByUsername;
         private String createdByDisplayName;

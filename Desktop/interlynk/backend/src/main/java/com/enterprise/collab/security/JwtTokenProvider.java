@@ -99,8 +99,48 @@ public class JwtTokenProvider {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        
+
         return claims.get("userId", Long.class);
+    }
+
+    /**
+     * Short-lived bearer-grade token issued AFTER password validation but
+     * BEFORE the second-factor TOTP step. It carries {@code typ=mfa-challenge}
+     * so {@link #validateMfaChallenge} can refuse access tokens being submitted
+     * to the MFA endpoint and vice-versa. Five-minute TTL is enough for the
+     * user to fish their phone out and read a code.
+     */
+    public String generateMfaChallenge(String username, Long userId, boolean rememberMe) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + 5 * 60 * 1000L);
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("userId", userId)
+                .claim("typ", "mfa-challenge")
+                .claim("rememberMe", rememberMe)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    /**
+     * Parse and validate a challenge token. Returns the claims if valid
+     * (signed by our key, not expired, typed correctly); returns {@code null}
+     * otherwise so the caller can fail closed.
+     */
+    public Claims validateMfaChallenge(String token) {
+        try {
+            Claims c = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            if (!"mfa-challenge".equals(c.get("typ", String.class))) return null;
+            return c;
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
     
     public String getTokenFromRequest(javax.servlet.http.HttpServletRequest request) {

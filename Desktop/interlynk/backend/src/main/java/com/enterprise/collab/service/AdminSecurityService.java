@@ -10,13 +10,14 @@ import com.enterprise.collab.exception.ResourceNotFoundException;
 import com.enterprise.collab.repository.AuditLogRepository;
 import com.enterprise.collab.repository.RoleRepository;
 import com.enterprise.collab.repository.UserRepository;
+import com.enterprise.collab.security.Totp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,9 +37,12 @@ public class AdminSecurityService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final AuditLogRepository auditLogRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.security.mfa.issuer:Narada}")
+    private String mfaIssuer;
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final String BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     private static final Set<String> SYSTEM_ROLES = Set.of("ADMIN", "MANAGER", "EMPLOYEE", "MODERATOR");
 
     /** Curated catalog of permission keys exposed to custom admin roles. */
@@ -67,50 +71,141 @@ public class AdminSecurityService {
     @Transactional(readOnly = true)
     public MfaStatusResponse mfaStatus(Long userId) {
         User u = requireUser(userId);
-        return MfaStatusResponse.builder()
-                .userId(u.getId()).username(u.getUsername())
-                .enabled(u.isMfaEnabled()).required(u.isMfaRequired())
-                .enrolledAt(u.getMfaEnrolledAt())
-                .build();
+        return toStatus(u);
     }
 
+    /**
+     * Toggle the {@code required} flag, or revoke an enrollment by passing
+     * {@code enabled=false}. The admin can never activate MFA from here — the
+     * user must complete the {@link #enrollMfa} → {@link #confirmMfa} flow so
+     * we know they actually scanned the QR into an authenticator app.
+     */
     @Transactional
     public MfaStatusResponse setMfa(Long userId, MfaSetRequest req, String actor) {
         User u = requireUser(userId);
         if (req.getRequired() != null) u.setMfaRequired(req.getRequired());
         if (req.getEnabled() != null) {
             if (!req.getEnabled()) {
-                u.setMfaEnabled(false);
-                u.setMfaSecret(null);
-                u.setMfaEnrolledAt(null);
+                clearEnrollment(u);
             } else {
-                if (u.getMfaSecret() == null) {
-                    throw new BadRequestException("Cannot enable MFA without enrollment. Call /enroll first.");
-                }
-                u.setMfaEnabled(true);
-                if (u.getMfaEnrolledAt() == null) u.setMfaEnrolledAt(LocalDateTime.now());
+                throw new BadRequestException(
+                        "MFA can only be activated by completing the enroll → confirm flow, " +
+                        "not by toggling 'enabled' directly.");
             }
         }
         userRepository.save(u);
-        audit(actor, "SET_MFA", userId, "Set MFA: enabled=" + u.isMfaEnabled() + " required=" + u.isMfaRequired());
-        return mfaStatus(userId);
+        audit(actor, "SET_MFA", userId,
+                "MFA: enabled=" + u.isMfaEnabled() + " required=" + u.isMfaRequired());
+        return toStatus(u);
     }
 
+    /**
+     * Stage 1 of enrollment. Generates a fresh TOTP secret and one-time backup
+     * codes. The user must scan the {@code otpauthUrl} (or the QR rendered from
+     * it) into Authy / Google Authenticator / Microsoft Authenticator / 1Password
+     * and then call {@link #confirmMfa} with their first 6-digit code before
+     * MFA becomes active.
+     */
     @Transactional
     public MfaEnrollResponse enrollMfa(Long userId, String actor) {
         User u = requireUser(userId);
-        String secret = generateBase32Secret(32);
+        String secret = Totp.generateBase32Secret(32);
         u.setMfaSecret(secret);
+        u.setMfaEnabled(false);
+        u.setMfaEnrolledAt(null);
+
+        // Generate plain backup codes (shown to admin ONCE) and persist bcrypt
+        // hashes so we can validate them at login without exposing them again.
+        List<String> plainCodes = new ArrayList<>();
+        List<String> hashed = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            String code = generateBackupCode();
+            plainCodes.add(code);
+            hashed.add(passwordEncoder.encode(code));
+        }
+        u.setMfaBackupCodes(String.join(",", hashed));
+        userRepository.save(u);
+
+        String otpauth = Totp.otpAuthUrl(mfaIssuer, u.getUsername(), secret);
+        audit(actor, "ENROLL_MFA", userId,
+                "Started MFA enrollment for " + u.getUsername() + " — awaiting code confirmation");
+        return MfaEnrollResponse.builder()
+                .secret(secret).otpauthUrl(otpauth).backupCodes(plainCodes).build();
+    }
+
+    /**
+     * Stage 2 of enrollment. Verify the first TOTP code from the authenticator
+     * app before we trust the secret and mark MFA active. Required to prevent
+     * a user being "MFA-enabled" with a secret they never actually scanned.
+     */
+    @Transactional
+    public MfaStatusResponse confirmMfa(Long userId, String code, String actor) {
+        User u = requireUser(userId);
+        if (u.getMfaSecret() == null) {
+            throw new BadRequestException("No pending enrollment — call /enroll first.");
+        }
+        if (!Totp.verify(u.getMfaSecret(), code)) {
+            throw new BadRequestException("Invalid verification code. Make sure your device clock is correct.");
+        }
         u.setMfaEnabled(true);
         u.setMfaEnrolledAt(LocalDateTime.now());
         userRepository.save(u);
-        List<String> backup = new ArrayList<>();
-        for (int i = 0; i < 8; i++) backup.add(generateBackupCode());
-        String label = URLEncoder.encode("InterLynk:" + u.getUsername(), StandardCharsets.UTF_8);
-        String otpauth = "otpauth://totp/" + label + "?secret=" + secret + "&issuer=InterLynk";
-        audit(actor, "ENROLL_MFA", userId, "Enrolled MFA for " + u.getUsername());
-        return MfaEnrollResponse.builder()
-                .secret(secret).otpauthUrl(otpauth).backupCodes(backup).build();
+        audit(actor, "CONFIRM_MFA", userId, "MFA confirmed and activated for " + u.getUsername());
+        return toStatus(u);
+    }
+
+    /**
+     * Internal helper used by the login flow. Accepts either a 6-digit TOTP
+     * code (verified against {@link User#getMfaSecret()}) or one of the
+     * user's bcrypt-hashed backup codes. A consumed backup code is removed.
+     */
+    @Transactional
+    public boolean verifyMfaForLogin(User user, String code) {
+        if (user == null || user.getMfaSecret() == null || code == null) return false;
+        String trimmed = code.trim().replaceAll("\\s+", "");
+        if (trimmed.isEmpty()) return false;
+
+        if (Totp.verify(user.getMfaSecret(), trimmed)) return true;
+
+        // Try backup codes — match against each remaining bcrypt hash and
+        // remove the consumed entry so it can't be reused.
+        String stored = user.getMfaBackupCodes();
+        if (stored == null || stored.isBlank()) return false;
+        List<String> hashes = new ArrayList<>(Arrays.asList(stored.split(",")));
+        for (int i = 0; i < hashes.size(); i++) {
+            String h = hashes.get(i);
+            if (h.isBlank()) continue;
+            if (passwordEncoder.matches(trimmed, h)) {
+                hashes.remove(i);
+                user.setMfaBackupCodes(String.join(",", hashes));
+                userRepository.save(user);
+                audit(user.getUsername(), "MFA_BACKUP_USED", user.getId(),
+                        "Consumed a one-time backup code at login");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void clearEnrollment(User u) {
+        u.setMfaEnabled(false);
+        u.setMfaSecret(null);
+        u.setMfaEnrolledAt(null);
+        u.setMfaBackupCodes(null);
+    }
+
+    private MfaStatusResponse toStatus(User u) {
+        int remaining = 0;
+        if (u.getMfaBackupCodes() != null && !u.getMfaBackupCodes().isBlank()) {
+            for (String h : u.getMfaBackupCodes().split(",")) if (!h.isBlank()) remaining++;
+        }
+        return MfaStatusResponse.builder()
+                .userId(u.getId()).username(u.getUsername())
+                .enabled(u.isMfaEnabled()).required(u.isMfaRequired())
+                .pendingConfirmation(u.getMfaSecret() != null && !u.isMfaEnabled())
+                .backupCodesRemaining(remaining)
+                .enrolledAt(u.getMfaEnrolledAt())
+                .build();
     }
 
     /* ── RBAC ────────────────────────────────────────────── */
@@ -213,12 +308,6 @@ public class AdminSecurityService {
     private User requireUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-    }
-
-    private String generateBase32Secret(int len) {
-        StringBuilder sb = new StringBuilder(len);
-        for (int i = 0; i < len; i++) sb.append(BASE32.charAt(RANDOM.nextInt(BASE32.length())));
-        return sb.toString();
     }
 
     private String generateBackupCode() {

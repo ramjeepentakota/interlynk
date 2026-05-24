@@ -19,20 +19,39 @@ public class AdminSecurityDto {
     public static class MfaStatusResponse {
         private Long userId;
         private String username;
+        /** True once the user has confirmed the first TOTP code and enrollment is active. */
         private boolean enabled;
+        /** True if the admin has flagged MFA as mandatory for this user. */
         private boolean required;
+        /** True when a TOTP secret exists but the user has not yet verified a code. */
+        private boolean pendingConfirmation;
+        /** Number of unused (and still-valid) backup recovery codes for this user. */
+        private int backupCodesRemaining;
         private LocalDateTime enrolledAt;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class MfaEnrollResponse {
         private String secret;       // base32 TOTP secret (return only at enrollment)
-        private String otpauthUrl;   // e.g. otpauth://totp/InterLynk:alice?secret=...
+        private String otpauthUrl;   // e.g. otpauth://totp/Narada:alice?secret=...&issuer=Narada
+        /** Plain-text backup codes — shown ONCE; only bcrypt hashes are persisted. */
         private List<String> backupCodes;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class MfaConfirmRequest {
+        /** 6-digit TOTP code from the user's authenticator app. */
+        @NotBlank @Size(min = 6, max = 8)
+        private String code;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor @Builder
     public static class MfaSetRequest {
+        /**
+         * Toggling {@code enabled} only disables an existing enrollment; the
+         * user cannot be enabled via this endpoint — they must complete the
+         * enroll → confirm flow first.
+         */
         private Boolean enabled;
         private Boolean required;
     }

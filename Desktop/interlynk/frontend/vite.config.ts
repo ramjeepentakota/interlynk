@@ -97,6 +97,16 @@ const backendHost = process.env.BACKEND_HOST || '127.0.0.1'
 const backendPort = process.env.BACKEND_PORT || '8082'
 const backendTarget = process.env.BACKEND_URL || `http://${backendHost}:${backendPort}`
 
+// Self-hosted mediasoup SFU Socket.IO signaling. Proxied under the same TLS dev
+// origin (path /sfu-io) so the browser connects over wss:// with no second
+// self-signed cert and no mixed-content block — nginx does the identical proxy
+// in production. ONLY signaling is proxied here; the WebRTC *media* (SRTP/DTLS
+// over UDP/TCP) flows directly to the SFU's announced IP and is exempt from
+// mixed-content rules.
+const sfuHost = process.env.SFU_HOST || '127.0.0.1'
+const sfuPort = process.env.SFU_PORT || '4443'
+const sfuTarget = process.env.SFU_URL_TARGET || `http://${sfuHost}:${sfuPort}`
+
 // Strip the browser's Origin/Referer headers on the way to the backend. The
 // proxy is inside our trust boundary, so the backend's CORS doesn't need to
 // validate the browser origin. Removing Origin makes Spring's CORS
@@ -121,6 +131,19 @@ const proxy: Record<string, ProxyOptions> = {
     changeOrigin: true,
     secure: false,
     ws: true,
+    configure: (p) => {
+      p.on('proxyReq', (proxyReq) => stripOriginHeader(proxyReq))
+      p.on('proxyReqWs', (proxyReq) => stripOriginHeader(proxyReq))
+    },
+  },
+  // SFU Socket.IO signaling. Strip the /sfu-io prefix so the SFU sees its native
+  // /socket.io/ path. ws:true upgrades the long-poll → websocket transport.
+  '/sfu-io': {
+    target: sfuTarget,
+    changeOrigin: true,
+    secure: false,
+    ws: true,
+    rewrite: (p) => p.replace(/^\/sfu-io/, ''),
     configure: (p) => {
       p.on('proxyReq', (proxyReq) => stripOriginHeader(proxyReq))
       p.on('proxyReqWs', (proxyReq) => stripOriginHeader(proxyReq))

@@ -36,7 +36,7 @@ export function MeetingsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, height: '100%', overflow: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", flex: 1 }}>Meetings &amp; Webinars</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', flex: 1 }}>Meetings &amp; Webinars</h2>
         <Btn size="sm" variant="primary" onClick={() => setCreating(true)}><Ic.Plus s={13} /> New policy</Btn>
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--t3)', marginTop: -8 }}>
@@ -188,7 +188,7 @@ export function CallingView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ padding: '20px 24px 4px' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Calling &amp; Phone System</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>Calling &amp; Phone System</h2>
         <div style={{ fontSize: 12.5, color: 'var(--t3)' }}>Phone numbers (PSTN / SIP / internal), call queues, and auto-attendants. Carrier connectors are configured per-number.</div>
       </div>
       <div style={{ display: 'flex', gap: 4, padding: '8px 24px', borderBottom: '1px solid var(--bd)' }}>
@@ -312,7 +312,7 @@ function CreatePhoneModal({ onClose, onCreated }: { onClose: () => void; onCreat
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 440, maxWidth: '92vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 18 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: "'Outfit',sans-serif" }}>Add phone number</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, fontFamily: 'var(--ff-display)' }}>Add phone number</div>
         {err && <div style={{ color: 'var(--err)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
         <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>E.164 number</label>
         <input style={{ ...input, marginBottom: 10 }} value={form.e164} onChange={(e) => setForm({ ...form, e164: e.target.value })} placeholder="+14155550100" autoFocus />
@@ -362,7 +362,7 @@ function AssignPhoneModal({ phone, onClose, onAssigned }: { phone: PhoneNumber; 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: '92vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 18 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>Assign {phone.e164}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 4, fontFamily: 'var(--ff-display)' }}>Assign {phone.e164}</div>
         <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 12 }}>{phone.label}</div>
         {err && <div style={{ color: 'var(--err)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
         <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>Assignment</label>
@@ -442,7 +442,7 @@ function QueuesTab() {
             </div>
             <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {q.agents.slice(0, 5).map((a) => (
-                <Avatar key={a.userId} user={{ id: String(a.userId), name: a.displayName, color: '#8b5cf6' }} size={22} />
+                <Avatar key={a.userId} user={{ id: String(a.userId), name: a.displayName, color: '#d4a548' }} size={22} />
               ))}
               {q.agentCount > 5 && <span style={{ fontSize: 11, color: 'var(--t3)' }}>+{q.agentCount - 5}</span>}
               {q.agentCount === 0 && <span style={{ fontSize: 11.5, color: 'var(--t3)' }}>No agents</span>}

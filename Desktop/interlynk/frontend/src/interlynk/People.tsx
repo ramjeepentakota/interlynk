@@ -8,8 +8,29 @@ import type { ReactNode } from 'react';
 import { Ic } from './icons';
 import { Avatar, Tip, useHover } from './ui';
 import { useApp } from './context';
-import { STATUS_COLORS, type User } from './data';
-import { Composer } from './ChatFeatures';
+import { STATUS_COLORS, type Attachment, type Poll, type User } from './data';
+import { Composer, MessageAttachments, PollCard } from './ChatFeatures';
+
+const ATTACH_PREFIX = '__ATTACH__';
+const POLL_PREFIX = '__POLL__';
+
+interface ParsedDm { text: string; attachments: Attachment[]; poll?: Poll }
+
+function parseDmContent(content: string): ParsedDm {
+  if (content.startsWith(ATTACH_PREFIX)) {
+    try {
+      const { text = '', attachments = [] } = JSON.parse(content.slice(ATTACH_PREFIX.length));
+      return { text, attachments };
+    } catch { /* fall through */ }
+  }
+  if (content.startsWith(POLL_PREFIX)) {
+    try {
+      const poll: Poll = JSON.parse(content.slice(POLL_PREFIX.length));
+      return { text: '', attachments: [], poll };
+    } catch { /* fall through */ }
+  }
+  return { text: content, attachments: [] };
+}
 
 /* ── Reusable user search type-ahead ─────────────────────── */
 export function UserSearchBox({
@@ -58,7 +79,7 @@ export function UserSearchBox({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={placeholder}
-          style={{ width: '100%', padding: '9px 12px 9px 32px', fontSize: 13.5, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+          style={{ width: '100%', padding: '9px 12px 9px 32px', fontSize: 13.5, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
         />
       </div>
       <div style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -133,7 +154,7 @@ export function InlinePeopleSearch({ width = 220, placeholder = 'Search people�
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => setFocused(true)}
         placeholder={placeholder}
-        style={{ width: '100%', height: 32, padding: '0 10px 0 30px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+        style={{ width: '100%', height: 32, padding: '0 10px 0 30px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
       />
       {open && (
         <div className="il-scale-in" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 280, maxWidth: 'calc(100vw - 24px)', maxHeight: 320, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 12px 40px rgba(0,0,0,.45)', padding: 6, zIndex: 200 }}>
@@ -157,7 +178,7 @@ export function NewMessageModal({ onClose }: { onClose: () => void }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }} onClick={onClose}>
       <div className="il-scale-in il-modal-card il-newmsg-modal" onClick={(e) => e.stopPropagation()} style={{ width: 420, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 16, boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>New message</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>New message</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 4, borderRadius: 6, display: 'flex' }}>
             <Ic.X s={16} />
           </button>
@@ -174,16 +195,17 @@ export function NewMessageModal({ onClose }: { onClose: () => void }) {
 
 /* ── Profile card (Teams/WhatsApp style) ─────────────────── */
 export function ProfileCard() {
-  const { profileUser, closeProfile, openDm, startDirectCall, currentUser } = useApp();
+  const { profileUser, closeProfile, openDm, startDirectCall, currentUser, usersById } = useApp();
   if (!profileUser) return null;
   const u = profileUser;
   const isSelf = currentUser?.id === u.id;
-  const status = u.status || 'offline';
+  // Always use the live presence from usersById so the status dot updates in real-time.
+  const status = (usersById[u.id]?.status) || u.status || 'offline';
 
   const action = (label: string, icon: ReactNode, onClick: () => void, tone: string) => (
     <button
       onClick={onClick}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 'var(--r-lg)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', color: tone, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: 12.5, fontWeight: 600, transition: 'all .14s' }}
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 'var(--r-lg)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', color: tone, cursor: 'pointer', fontFamily: 'var(--ff-body)', fontSize: 12.5, fontWeight: 600, transition: 'all .14s' }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-active)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
     >
@@ -195,7 +217,7 @@ export function ProfileCard() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5200, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={closeProfile}>
       <div className="il-scale-in il-modal-card il-profile-card" onClick={(e) => e.stopPropagation()} style={{ width: 340, maxWidth: '92vw', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.65)' }}>
-        <div style={{ height: 84, background: 'linear-gradient(135deg,var(--primary) 0%,#a855f7 100%)', position: 'relative' }}>
+        <div style={{ height: 84, background: 'linear-gradient(135deg,var(--primary) 0%,var(--primary-h) 100%)', position: 'relative' }}>
           <button onClick={closeProfile} style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,.3)', border: 'none', cursor: 'pointer', color: '#fff', padding: 5, borderRadius: 6, display: 'flex' }}>
             <Ic.X s={15} />
           </button>
@@ -207,7 +229,7 @@ export function ProfileCard() {
             </div>
           </div>
           <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{u.name}</span>
+            <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>{u.name}</span>
             {u.role === 'ADMIN' && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--primary-dim)', color: 'var(--primary)' }}>ADMIN</span>}
           </div>
           <div style={{ fontSize: 13, color: 'var(--t3)', marginTop: 2 }}>@{u.username || u.id}</div>
@@ -235,19 +257,36 @@ export function ProfileCard() {
 /* ── DM conversation (main-area surface) ─────────────────── */
 export function DmConversation() {
   const {
-    activeDm, activeDmUser, dmMessages, dmLoading, sendDm, currentUser,
-    startDirectCall, openProfile,
+    activeDm, activeDmUser, dmMessages, dmLoading, sendDm, uploadDmAttachment,
+    createDmPoll, votePollInDm, currentUser, startDirectCall, openProfile, usersById,
   } = useApp();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [pollEndedQ, setPollEndedQ] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pollEndedQ) return;
+    const t = setTimeout(() => setPollEndedQ(null), 6000);
+    return () => clearTimeout(t);
+  }, [pollEndedQ]);
 
   const list = (activeDm && dmMessages[activeDm]) || [];
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [list.length, activeDm]);
+  const jumpToBottom = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  // Instant jump when switching conversations
+  useEffect(() => { jumpToBottom(); }, [activeDm]);
+  // Instant jump when new messages arrive
+  useEffect(() => { jumpToBottom(); }, [list.length]);
 
   if (!activeDmUser) return null;
-  const other = activeDmUser;
+  // Merge with live usersById so the status dot and text update instantly from
+  // presence events without needing to re-open the conversation.
+  const other = usersById[activeDmUser.id]
+    ? { ...activeDmUser, status: usersById[activeDmUser.id].status }
+    : activeDmUser;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -256,7 +295,7 @@ export function DmConversation() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: 'pointer' }} onClick={() => openProfile(other)}>
           <Avatar user={other} size={30} showStatus />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>{other.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff-display)', lineHeight: 1.2 }}>{other.name}</div>
             <div style={{ fontSize: 11.5, color: 'var(--t3)', textTransform: 'capitalize' }}>{other.status || 'offline'}</div>
           </div>
         </div>
@@ -268,11 +307,20 @@ export function DmConversation() {
         </Tip>
       </div>
 
+      {/* Poll-ended notification banner */}
+      {pollEndedQ && (
+        <div style={{ padding: '9px 16px', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, cursor: 'pointer' }} onClick={() => setPollEndedQ(null)}>
+          <Ic.BarChart s={14} />
+          <span style={{ flex: 1 }}>Poll ended: "{pollEndedQ}" — results are now visible.</span>
+          <button onClick={(e) => { e.stopPropagation(); setPollEndedQ(null); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 2, display: 'flex' }}><Ic.X s={13} /></button>
+        </div>
+      )}
+
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
         <div style={{ padding: '20px 16px', textAlign: 'center' }}>
           <Avatar user={other} size={56} style={{ margin: '0 auto 10px' }} />
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{other.name}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>{other.name}</div>
           <div style={{ fontSize: 13, color: 'var(--t3)' }}>This is the beginning of your direct message history.</div>
         </div>
 
@@ -296,9 +344,35 @@ export function DmConversation() {
               )}
               <div style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', padding: '2px 16px' }}>
                 <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', gap: 2 }}>
-                  <div style={{ padding: '8px 12px', borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: mine ? 'var(--primary)' : 'var(--bg-hover)', color: mine ? '#fff' : 'var(--t1)', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                    {m.content}
-                  </div>
+                  {(() => {
+                    const { text, attachments, poll } = parseDmContent(m.content);
+                    return (
+                      <>
+                        {poll && activeDm && (
+                          <PollCard
+                            poll={poll}
+                            onVote={(optionIds) => votePollInDm(activeDm, poll.id, optionIds)}
+                            onPollEnd={mine ? () => setPollEndedQ(poll.question) : undefined}
+                          />
+                        )}
+                        {text && (
+                          <div style={{ padding: '8px 12px', borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: mine ? 'var(--primary)' : 'var(--bg-hover)', color: mine ? '#fff' : 'var(--t1)', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                            {text}
+                          </div>
+                        )}
+                        {attachments.length > 0 && (
+                          <div style={{ padding: text ? '0 4px' : 0 }}>
+                            <MessageAttachments attachments={attachments} />
+                          </div>
+                        )}
+                        {!poll && !text && attachments.length === 0 && (
+                          <div style={{ padding: '8px 12px', borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: mine ? 'var(--primary)' : 'var(--bg-hover)', color: mine ? '#fff' : 'var(--t1)', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                            {m.content}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   <span style={{ fontSize: 10.5, color: 'var(--t3)', padding: '0 4px' }}>{m.time}</span>
                 </div>
               </div>
@@ -312,11 +386,13 @@ export function DmConversation() {
         <div ref={bottomRef} style={{ height: 8 }} />
       </div>
 
-      {/* Input — shared Composer (emoji, GIF, dictation, multilingual). */}
+      {/* Input — full Composer: image, video, document, poll. */}
       <Composer
         resetKey={activeDm}
         placeholder={`Message ${other.name}…`}
-        onSend={(textVal) => sendDm(textVal)}
+        onSend={(textVal, attachments) => sendDm(textVal, attachments)}
+        uploadFile={(file, filename) => uploadDmAttachment(file, filename)}
+        onCreatePoll={(q, opts, multi, durationMs) => createDmPoll(q, opts, multi, durationMs)}
       />
     </div>
   );

@@ -111,7 +111,7 @@ export function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => vo
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search emoji"
-            style={{ width: '100%', padding: '6px 8px 6px 30px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ width: '100%', padding: '6px 8px 6px 30px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
           />
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 4, borderRadius: 6, display: 'flex' }}>
@@ -416,21 +416,430 @@ function humanSize(bytes: number): string {
   return `${n.toFixed(n < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
 }
 
+function FileTypeIcon({ fileName, size = 46 }: { fileName: string; size?: number }) {
+  const ext = (fileName || '').split('.').pop()?.toLowerCase() || '';
+  const s = size;
+  const label = (ext || 'FILE').toUpperCase().slice(0, 4);
+
+  if (ext === 'pdf') {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#FDECEA"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#E63946" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#E63946" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#E63946" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <text x="20" y="24" fontFamily="Arial,sans-serif" fontSize="6.5" fontWeight="800" fill="#E63946" textAnchor="middle">PDF</text>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#E63946"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">PDF</text>
+      </svg>
+    );
+  }
+  if (['doc', 'docx'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#E8F0FE"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#185ABC" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#185ABC" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#185ABC" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <path d="M14 16h12M14 20h12M14 24h8" stroke="#185ABC" strokeWidth="1.2" strokeLinecap="round"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#185ABC"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['xls', 'xlsx', 'csv'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#E6F4EA"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#1A7F37" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#1A7F37" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#1A7F37" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <rect x="13" y="15" width="14" height="12" rx="1.5" stroke="#1A7F37" strokeWidth="1.2" fill="none"/>
+        <path d="M13 19h14M13 23h14M17 15v12M24 15v12" stroke="#1A7F37" strokeWidth="1" strokeLinecap="round"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#1A7F37"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['ppt', 'pptx'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#FEF0E6"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#C43E00" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#C43E00" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#C43E00" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <rect x="13" y="15" width="14" height="9" rx="1.5" stroke="#C43E00" strokeWidth="1.2" fill="none"/>
+        <path d="M20 24v4" stroke="#C43E00" strokeWidth="1.2" strokeLinecap="round"/>
+        <path d="M17 28h6" stroke="#C43E00" strokeWidth="1.2" strokeLinecap="round"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#C43E00"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#FEF9E7"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#F59E0B" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#F59E0B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#F59E0B" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <rect x="18" y="9" width="4" height="3" rx="0.5" fill="#F59E0B" opacity="0.6"/>
+        <rect x="18" y="14" width="4" height="3" rx="0.5" fill="#F59E0B" opacity="0.8"/>
+        <rect x="18" y="19" width="4" height="3" rx="0.5" fill="#F59E0B"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#F59E0B"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['txt', 'md', 'rtf', 'log'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#F3F4F6"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#6B7280" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <path d="M14 16h12M14 20h12M14 24h9" stroke="#6B7280" strokeWidth="1.3" strokeLinecap="round"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#6B7280"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#EDE9FE"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#7C3AED" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#7C3AED" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#7C3AED" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <path d="M15 16l11 5.5-11 5.5V16z" fill="#7C3AED"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#7C3AED"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) {
+    return (
+      <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+        <rect width="46" height="46" rx="10" fill="#FCE7F3"/>
+        <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#DB2777" strokeWidth="1.4"/>
+        <path d="M24 5v8h6" stroke="#DB2777" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M24 5l6 8" stroke="#DB2777" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+        <path d="M14 22v-4M17 22v-7M20 22v-5M23 22v-8M26 22v-3" stroke="#DB2777" strokeWidth="1.5" strokeLinecap="round"/>
+        <rect x="8" y="31" width="30" height="10" rx="3" fill="#DB2777"/>
+        <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+      </svg>
+    );
+  }
+  // Generic file
+  return (
+    <svg width={s} height={s} viewBox="0 0 46 46" fill="none">
+      <rect width="46" height="46" rx="10" fill="#EFF6FF"/>
+      <rect x="10" y="5" width="20" height="26" rx="3" fill="white" stroke="#3B82F6" strokeWidth="1.4"/>
+      <path d="M24 5v8h6" stroke="#3B82F6" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <path d="M24 5l6 8" stroke="#3B82F6" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+      <path d="M14 18h12M14 22h9" stroke="#3B82F6" strokeWidth="1.3" strokeLinecap="round"/>
+      <rect x="8" y="31" width="30" height="10" rx="3" fill="#3B82F6"/>
+      <text x="23" y="39" fontFamily="Arial,sans-serif" fontSize="7" fontWeight="800" fill="white" textAnchor="middle">{label}</text>
+    </svg>
+  );
+}
+
+function isPreviewable(a: Attachment): boolean {
+  const ext = (a.fileName || '').split('.').pop()?.toLowerCase() || '';
+  return ['pdf', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ||
+    (a.fileType || '').startsWith('image/') ||
+    a.fileType === 'application/pdf' ||
+    a.fileType === 'text/plain';
+}
+
+/** Full-screen preview modal for images, PDFs, and text files. */
+function FilePreviewModal({ a, onClose }: { a: Attachment; onClose: () => void }) {
+  const ext = (a.fileName || '').split('.').pop()?.toLowerCase() || '';
+  const isPdf = ext === 'pdf' || a.fileType === 'application/pdf';
+  const isText = ext === 'txt' || a.fileType === 'text/plain';
+  const isImage = a.kind === 'image' || a.kind === 'gif' || (a.fileType || '').startsWith('image/');
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,.82)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+    >
+      {/* Header */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 860, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--bg-elv)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0', border: '1px solid var(--bd2)' }}
+      >
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</span>
+        <span style={{ fontSize: 12, color: 'var(--t3)', marginRight: 8 }}>{humanSize(a.fileSize)}</span>
+        <a href={a.fileUrl} download={a.fileName} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 'var(--r)', background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>
+          <Ic.Download s={13} /> Download
+        </a>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex', marginLeft: 4 }}>
+          <Ic.X s={17} />
+        </button>
+      </div>
+
+      {/* Preview body */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 860, flex: 1, maxHeight: '80vh', background: 'var(--bg-main)', border: '1px solid var(--bd2)', borderTop: 'none', borderRadius: '0 0 var(--r-lg) var(--r-lg)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        {isImage && (
+          <img src={a.fileUrl} alt={a.fileName} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
+        )}
+        {isPdf && (
+          <iframe src={a.fileUrl} title={a.fileName} style={{ width: '100%', height: '80vh', border: 'none' }} />
+        )}
+        {isText && (
+          <iframe src={a.fileUrl} title={a.fileName} style={{ width: '100%', height: '80vh', border: 'none', background: '#fff', color: '#000' }} />
+        )}
+        {!isImage && !isPdf && !isText && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--t3)' }}>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><FileTypeIcon fileName={a.fileName} size={72} /></div>
+            <div style={{ fontSize: 15, color: 'var(--t1)', fontWeight: 600, marginBottom: 4 }}>{a.fileName}</div>
+            <div style={{ fontSize: 13, marginBottom: 20 }}>{humanSize(a.fileSize)}</div>
+            <a href={a.fileUrl} download={a.fileName} style={{ padding: '9px 20px', borderRadius: 'var(--r)', background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 13.5, fontWeight: 600 }}>
+              Download file
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Full-screen document preview modal — Teams style. */
+function DocPreviewModal({ a, blobUrl, fetching, onClose }: {
+  a: Attachment; blobUrl: string | null; fetching: boolean; onClose: () => void;
+}) {
+  const ext = (a.fileName || '').split('.').pop()?.toLowerCase() || '';
+  const isPdf = ext === 'pdf' || a.fileType === 'application/pdf';
+  const isText = ext === 'txt' || a.fileType === 'text/plain';
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1200,
+        background: 'rgba(0,0,0,.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', height: '100%',
+          maxWidth: 1140, maxHeight: '100%',
+          background: 'var(--bg-main)',
+          borderRadius: 'var(--r-xl)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 32px 100px rgba(0,0,0,.8)',
+          border: '1px solid var(--bd2)',
+        }}
+      >
+        {/* Header bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 20px', flexShrink: 0,
+          background: 'var(--bg-sidebar)',
+          borderBottom: '1px solid var(--bd)',
+        }}>
+          <FileTypeIcon fileName={a.fileName} size={40} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
+            <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 1 }}>{humanSize(a.fileSize)}</div>
+          </div>
+          <a
+            href={a.fileUrl} download={a.fileName}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 'var(--r)', background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 13.5, fontWeight: 600, flexShrink: 0 }}
+          >
+            <Ic.Download s={15} /> Download
+          </a>
+          <button
+            onClick={onClose}
+            style={{ width: 38, height: 38, borderRadius: 'var(--r)', border: 'none', cursor: 'pointer', background: 'var(--bg-active)', color: 'var(--t2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <Ic.X s={18} />
+          </button>
+        </div>
+
+        {/* Preview body — fills all remaining height */}
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', background: '#1a1a1a' }}>
+          {fetching && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+              <Ic.Loader s={34} className="il-spin" c="var(--primary)" />
+              <span style={{ fontSize: 14, color: 'var(--t3)' }}>Loading preview…</span>
+            </div>
+          )}
+          {!fetching && blobUrl && (
+            isPdf
+              ? <embed src={blobUrl} type="application/pdf" style={{ width: '100%', height: '100%', display: 'block' }} />
+              : isText
+              ? <iframe src={blobUrl} title={a.fileName} style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} sandbox="allow-same-origin" />
+              : <img src={blobUrl} alt={a.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+          )}
+          {!fetching && !blobUrl && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 40 }}>
+              <FileTypeIcon fileName={a.fileName} size={80} />
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--t1)' }}>Preview unavailable for this file type</div>
+              <div style={{ fontSize: 13.5, color: 'var(--t3)' }}>Download the file to view it in a compatible application.</div>
+              <a href={a.fileUrl} download={a.fileName}
+                style={{ padding: '10px 28px', borderRadius: 'var(--r)', background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Ic.Download s={16} /> Download file
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Compact Teams-style file attachment card in chat. */
+function DocCard({ a }: { a: Attachment }) {
+  const [open, setOpen] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const blobRef = useRef<string | null>(null);
+
+  const ext = (a.fileName || '').split('.').pop()?.toLowerCase() || '';
+  const isPdf = ext === 'pdf' || a.fileType === 'application/pdf';
+  const isText = ext === 'txt' || a.fileType === 'text/plain';
+  const isImg  = (a.fileType || '').startsWith('image/') || ['jpg','jpeg','png','gif','webp'].includes(ext);
+  const canPreview = isPdf || isText || isImg;
+
+  const fileColor =
+    ext === 'pdf'                      ? '#e63946' :
+    ['doc','docx'].includes(ext)       ? '#185abc' :
+    ['xls','xlsx','csv'].includes(ext) ? '#1a7f37' :
+    ['ppt','pptx'].includes(ext)       ? '#c43e00' :
+    ['zip','rar','7z'].includes(ext)   ? '#f59e0b' :
+    'var(--primary)';
+
+  useEffect(() => () => { if (blobRef.current) URL.revokeObjectURL(blobRef.current); }, []);
+
+  const openPreview = async () => {
+    setOpen(true);
+    if (blobUrl) return;
+    setFetching(true);
+    try {
+      const res = await fetch(a.fileUrl, { credentials: 'include' });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const typed = isPdf  ? new Blob([blob], { type: 'application/pdf' })
+                  : isText ? new Blob([blob], { type: 'text/plain' })
+                  : blob;
+      const url = URL.createObjectURL(typed);
+      blobRef.current = url;
+      setBlobUrl(url);
+    } catch { setBlobUrl(null); }
+    finally { setFetching(false); }
+  };
+
+  return (
+    <>
+      {/* Compact horizontal card — like Teams file attachment */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '11px 14px',
+        borderRadius: 'var(--r-lg)',
+        border: '1px solid var(--bd)',
+        background: 'var(--bg-hover)',
+        width: '100%',
+      }}>
+        {/* Colored file icon */}
+        <div style={{ flexShrink: 0 }}>
+          <FileTypeIcon fileName={a.fileName} size={46} />
+        </div>
+
+        {/* Name + type/size */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--t3)', marginTop: 2 }}>
+            {(ext || 'FILE').toUpperCase()} · {humanSize(a.fileSize)}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {canPreview && (
+            <button
+              onClick={openPreview}
+              style={{
+                padding: '6px 14px', borderRadius: 'var(--r)',
+                border: `1.5px solid ${fileColor}66`,
+                background: `${fileColor}18`,
+                color: fileColor,
+                fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'var(--ff-body)',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              <Ic.Eye s={13} /> Preview
+            </button>
+          )}
+          <Tip label="Download">
+            <a
+              href={a.fileUrl} download={a.fileName}
+              style={{
+                width: 34, height: 34, borderRadius: 'var(--r)',
+                border: '1.5px solid var(--bd2)',
+                color: 'var(--t2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                textDecoration: 'none',
+              }}
+            >
+              <Ic.Download s={15} />
+            </a>
+          </Tip>
+        </div>
+      </div>
+
+      {/* Full-screen Teams-style preview modal */}
+      {open && (
+        <DocPreviewModal
+          a={a}
+          blobUrl={blobUrl}
+          fetching={fetching}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 /** Inline gallery for a message's attachments (images, video, audio/voice, docs). */
 export function MessageAttachments({ attachments }: { attachments: Attachment[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, maxWidth: 420 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6, maxWidth: 420 }}>
       {attachments.map((a, i) => <AttachmentView key={a.id || `${a.fileUrl}-${i}`} a={a} />)}
     </div>
   );
 }
 
 function AttachmentView({ a }: { a: Attachment }) {
+  const [preview, setPreview] = useState(false);
+
   if (a.kind === 'image' || a.kind === 'gif') {
     return (
-      <a href={a.fileUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1px solid var(--bd)', maxWidth: 320 }}>
-        <img src={a.fileUrl} alt={a.fileName} loading="lazy" style={{ display: 'block', maxWidth: 320, maxHeight: 320, objectFit: 'cover' }} />
-      </a>
+      <>
+        <div
+          onClick={() => setPreview(true)}
+          style={{ display: 'inline-block', borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1px solid var(--bd)', maxWidth: 320, cursor: 'pointer' }}
+        >
+          <img src={a.fileUrl} alt={a.fileName} loading="lazy" style={{ display: 'block', maxWidth: 320, maxHeight: 320, objectFit: 'cover' }} />
+        </div>
+        {preview && <FilePreviewModal a={a} onClose={() => setPreview(false)} />}
+      </>
     );
   }
   if (a.kind === 'video') {
@@ -441,25 +850,7 @@ function AttachmentView({ a }: { a: Attachment }) {
   if (a.kind === 'voice' || a.kind === 'audio') {
     return <VoiceBubble a={a} />;
   }
-  // Generic document/file chip.
-  return (
-    <a
-      href={a.fileUrl}
-      target="_blank"
-      rel="noreferrer"
-      download={a.fileName}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 'var(--r-lg)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', textDecoration: 'none', maxWidth: 320 }}
-    >
-      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--primary-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--primary)' }}>
-        <Ic.File s={18} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.fileName}</div>
-        <div style={{ fontSize: 11.5, color: 'var(--t3)' }}>{humanSize(a.fileSize)}</div>
-      </div>
-      <span style={{ color: 'var(--t3)', display: 'flex', flexShrink: 0 }}><Ic.Download s={16} /></span>
-    </a>
-  );
+  return <DocCard a={a} />;
 }
 
 /** Compact audio player styled as a voice note. */
@@ -501,12 +892,12 @@ export function PendingAttachments({ items, onRemove }: { items: PendingAttachme
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--bd)' }}>
       {items.map((p) => (
-        <div key={p.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: p.previewUrl ? 0 : '6px 10px', borderRadius: 'var(--r)', border: '1px solid var(--bd2)', background: 'var(--bg-elv)', maxWidth: 200 }}>
+        <div key={p.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: p.previewUrl ? 0 : '4px 8px 4px 4px', borderRadius: 'var(--r)', border: '1px solid var(--bd2)', background: 'var(--bg-elv)', maxWidth: 200 }}>
           {p.previewUrl ? (
             <img src={p.previewUrl} alt={p.file.name} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 'var(--r)' }} />
           ) : (
             <>
-              <Ic.File s={15} c="var(--t3)" />
+              <FileTypeIcon fileName={p.file.name} size={36} />
               <span style={{ fontSize: 12, color: 'var(--t2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{p.file.name}</span>
             </>
           )}
@@ -540,30 +931,60 @@ export interface PendingAttachment {
    Polls
    ════════════════════════════════════════════════════════════ */
 
-/** Renders a poll inside a message with live result bars. Voting is delegated
- *  to the parent via onVote(optionIds). */
-export function PollCard({ poll, onVote }: { poll: Poll; onVote: (optionIds: string[]) => void }) {
+function fmtCountdown(ms: number): string {
+  if (ms <= 0) return 'Ended';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s left`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m left`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m left`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h left`;
+}
+
+/** Renders a poll inside a message with live result bars and countdown. */
+export function PollCard({ poll, onVote, onPollEnd }: { poll: Poll; onVote: (optionIds: string[]) => void; onPollEnd?: () => void }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!poll.expiresAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [poll.expiresAt]);
+
+  const expiryMs = poll.expiresAt ? new Date(poll.expiresAt).getTime() : null;
+  const isExpired = poll.closed || (expiryMs !== null && expiryMs <= now);
+  const firedEndRef = useRef(false);
+  useEffect(() => {
+    if (isExpired && onPollEnd && !firedEndRef.current) {
+      firedEndRef.current = true;
+      onPollEnd();
+    }
+  }, [isExpired, onPollEnd]);
   const voted = new Set(poll.votedOptionIds);
   const total = poll.totalVotes;
 
   const toggle = (optionId: string) => {
-    if (poll.closed) return;
+    if (isExpired) return;
     if (poll.allowMultiple) {
       const next = new Set(voted);
-      if (next.has(optionId)) next.delete(optionId);
-      else next.add(optionId);
+      if (next.has(optionId)) next.delete(optionId); else next.add(optionId);
       onVote([...next]);
     } else {
-      // Single choice: clicking the current selection clears it, else replaces.
       onVote(voted.has(optionId) ? [] : [optionId]);
     }
   };
 
   return (
-    <div style={{ marginTop: 6, maxWidth: 460, border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', background: 'var(--bg-elv)', padding: 14 }}>
+    <div style={{ marginTop: 6, maxWidth: 460, border: `1px solid ${isExpired ? 'var(--bd)' : 'var(--primary-dim)'}`, borderRadius: 'var(--r-lg)', background: 'var(--bg-elv)', padding: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ color: 'var(--primary)', display: 'flex' }}><Ic.BarChart s={16} /></span>
-        <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--t1)', lineHeight: 1.4 }}>{poll.question}</span>
+        <span style={{ color: isExpired ? 'var(--t3)' : 'var(--primary)', display: 'flex' }}><Ic.BarChart s={16} /></span>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--t1)', lineHeight: 1.4, flex: 1 }}>{poll.question}</span>
+        {expiryMs !== null && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: isExpired ? 'var(--err)' : 'var(--ok)', background: isExpired ? 'rgba(239,68,68,.12)' : 'rgba(34,197,94,.12)', padding: '2px 7px', borderRadius: 20, flexShrink: 0 }}>
+            {isExpired ? 'Ended' : fmtCountdown(expiryMs - now)}
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -571,27 +992,16 @@ export function PollCard({ poll, onVote }: { poll: Poll; onVote: (optionIds: str
           const pct = total > 0 ? Math.round((opt.voteCount / total) * 100) : 0;
           const mine = voted.has(opt.id);
           return (
-            <button
-              key={opt.id}
-              onClick={() => toggle(opt.id)}
-              disabled={poll.closed}
-              style={{
-                position: 'relative', display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-                padding: '9px 12px', borderRadius: 'var(--r)', cursor: poll.closed ? 'default' : 'pointer',
-                border: `1.5px solid ${mine ? 'var(--primary)' : 'var(--bd2)'}`, background: 'var(--bg-hover)', overflow: 'hidden',
-                fontFamily: "'DM Sans',sans-serif",
-              }}
+            <button key={opt.id} onClick={() => toggle(opt.id)} disabled={isExpired}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 'var(--r)', cursor: isExpired ? 'default' : 'pointer', border: `1.5px solid ${mine ? 'var(--primary)' : 'var(--bd2)'}`, background: 'var(--bg-hover)', overflow: 'hidden', fontFamily: 'var(--ff-body)' }}
             >
-              {/* result bar */}
               <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: mine ? 'var(--primary-dim)' : 'var(--bg-active)', transition: 'width .35s ease', zIndex: 0 }} />
               <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: poll.allowMultiple ? 5 : '50%', border: `1.5px solid ${mine ? 'var(--primary)' : 'var(--bd2)'}`, background: mine ? 'var(--primary)' : 'transparent', flexShrink: 0 }}>
                 {mine && <Ic.Check s={11} c="#fff" />}
               </span>
               <span style={{ position: 'relative', zIndex: 1, flex: 1, fontSize: 13.5, color: 'var(--t1)', fontWeight: mine ? 600 : 500 }}>{opt.text}</span>
               <span style={{ position: 'relative', zIndex: 1, fontSize: 12.5, color: 'var(--t2)', fontWeight: 600, flexShrink: 0 }}>{pct}%</span>
-              <span style={{ position: 'relative', zIndex: 1, fontSize: 11.5, color: 'var(--t3)', minWidth: 44, textAlign: 'right', flexShrink: 0 }}>
-                {opt.voteCount} {opt.voteCount === 1 ? 'vote' : 'votes'}
-              </span>
+              <span style={{ position: 'relative', zIndex: 1, fontSize: 11.5, color: 'var(--t3)', minWidth: 44, textAlign: 'right', flexShrink: 0 }}>{opt.voteCount} {opt.voteCount === 1 ? 'vote' : 'votes'}</span>
             </button>
           );
         })}
@@ -600,17 +1010,29 @@ export function PollCard({ poll, onVote }: { poll: Poll; onVote: (optionIds: str
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9, fontSize: 11.5, color: 'var(--t3)' }}>
         <span>{total} {total === 1 ? 'vote' : 'votes'}</span>
         {poll.allowMultiple && <span>· Multiple choice</span>}
-        {poll.closed && <span style={{ color: 'var(--err)', fontWeight: 600 }}>· Closed</span>}
+        {isExpired && <span style={{ color: 'var(--err)', fontWeight: 600 }}>· Poll ended</span>}
       </div>
     </div>
   );
 }
 
+const POLL_DURATION_OPTIONS: { label: string; ms: number }[] = [
+  { label: 'No limit', ms: 0 },
+  { label: '5 min', ms: 5 * 60_000 },
+  { label: '30 min', ms: 30 * 60_000 },
+  { label: '1 hour', ms: 60 * 60_000 },
+  { label: '6 hours', ms: 6 * 60 * 60_000 },
+  { label: '1 day', ms: 24 * 60 * 60_000 },
+  { label: '3 days', ms: 3 * 24 * 60 * 60_000 },
+  { label: '7 days', ms: 7 * 24 * 60 * 60_000 },
+];
+
 /** Compact poll-builder popover used from the composer. */
-export function PollComposer({ onCreate, onClose }: { onCreate: (question: string, options: string[], allowMultiple: boolean) => void; onClose: () => void }) {
+export function PollComposer({ onCreate, onClose }: { onCreate: (question: string, options: string[], allowMultiple: boolean, durationMs?: number) => void; onClose: () => void }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [durationMs, setDurationMs] = useState(0);
 
   const setOption = (i: number, v: string) => setOptions((p) => p.map((o, idx) => (idx === i ? v : o)));
   const addOption = () => setOptions((p) => (p.length >= 12 ? p : [...p, '']));
@@ -621,7 +1043,7 @@ export function PollComposer({ onCreate, onClose }: { onCreate: (question: strin
 
   const submit = () => {
     if (!valid) return;
-    onCreate(question.trim(), cleaned, allowMultiple);
+    onCreate(question.trim(), cleaned, allowMultiple, durationMs || undefined);
     onClose();
   };
 
@@ -643,7 +1065,7 @@ export function PollComposer({ onCreate, onClose }: { onCreate: (question: strin
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask a question…"
-          style={{ width: '100%', padding: '9px 11px', fontSize: 13.5, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+          style={{ width: '100%', padding: '9px 11px', fontSize: 13.5, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -654,7 +1076,7 @@ export function PollComposer({ onCreate, onClose }: { onCreate: (question: strin
                 onChange={(e) => setOption(i, e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && i === options.length - 1 && o.trim()) addOption(); }}
                 placeholder={`Option ${i + 1}`}
-                style={{ flex: 1, padding: '8px 11px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+                style={{ flex: 1, padding: '8px 11px', fontSize: 13, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', outline: 'none', fontFamily: 'var(--ff-body)' }}
               />
               {options.length > 2 && (
                 <button onClick={() => removeOption(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 5, borderRadius: 6, display: 'flex', flexShrink: 0 }}><Ic.X s={13} /></button>
@@ -662,7 +1084,7 @@ export function PollComposer({ onCreate, onClose }: { onCreate: (question: strin
             </div>
           ))}
           {options.length < 12 && (
-            <button onClick={addOption} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1.5px dashed var(--bd2)', cursor: 'pointer', color: 'var(--t-link)', padding: '7px 11px', borderRadius: 'var(--r)', fontSize: 12.5, fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>
+            <button onClick={addOption} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1.5px dashed var(--bd2)', cursor: 'pointer', color: 'var(--t-link)', padding: '7px 11px', borderRadius: 'var(--r)', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--ff-body)' }}>
               <Ic.Plus s={13} /> Add option
             </button>
           )}
@@ -672,6 +1094,18 @@ export function PollComposer({ onCreate, onClose }: { onCreate: (question: strin
           <input type="checkbox" checked={allowMultiple} onChange={(e) => setAllowMultiple(e.target.checked)} style={{ accentColor: 'var(--primary)', width: 15, height: 15 }} />
           Allow selecting multiple options
         </label>
+
+        <div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--t3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>Duration</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {POLL_DURATION_OPTIONS.map((opt) => (
+              <button key={opt.ms} type="button" onClick={() => setDurationMs(opt.ms)}
+                style={{ padding: '4px 10px', borderRadius: 20, border: `1.5px solid ${durationMs === opt.ms ? 'var(--primary)' : 'var(--bd2)'}`, background: durationMs === opt.ms ? 'var(--primary-dim)' : 'transparent', color: durationMs === opt.ms ? 'var(--primary)' : 'var(--t2)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--ff-body)' }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--bd)' }}>
@@ -703,7 +1137,7 @@ function AttachMenuItem({ icon, label, hint, onClick }: { icon: ReactNode; label
         display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
         padding: '7px 10px', borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
         background: h ? 'var(--bg-hover)' : 'transparent', color: 'var(--t1)',
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: 'var(--ff-body)',
       }}
     >
       <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -747,7 +1181,7 @@ export interface ComposerProps {
   /** Provide to enable file attachments + voice notes (channel-scoped upload). */
   uploadFile?: (file: File | Blob, filename?: string) => Promise<Attachment>;
   /** Provide to enable the poll builder. */
-  onCreatePoll?: (question: string, options: string[], allowMultiple: boolean) => void;
+  onCreatePoll?: (question: string, options: string[], allowMultiple: boolean, durationMs?: number) => void;
   /** Fired as the user types / stops (for typing indicators). */
   onTyping?: (typing: boolean) => void;
   /** Already-rendered typing indicator row (shown above the box). */
@@ -886,7 +1320,7 @@ export function Composer({ placeholder, disabled, onSend, uploadFile, onCreatePo
           <span style={{ fontSize: 13, color: 'var(--t3)' }}>Recording voice message…</span>
           <div style={{ flex: 1 }} />
           <Tip label="Cancel"><button onClick={() => voice.cancel()} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--bg-active)', color: 'var(--t2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic.Trash s={16} /></button></Tip>
-          <Tip label="Send"><button onClick={toggleVoice} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic.Send s={16} /></button></Tip>
+          <Tip label="Send"><button onClick={toggleVoice} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'var(--primary)', color: '#11183d', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--sh-glow)' }}><Ic.Send s={16} /></button></Tip>
         </div>
       </div>
     );
@@ -929,7 +1363,7 @@ export function Composer({ placeholder, disabled, onSend, uploadFile, onCreatePo
           autoCorrect="on"
           autoCapitalize="sentences"
           lang={stt.lang.split('-')[0]}
-          style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 15, fontFamily: "'DM Sans',sans-serif", resize: 'none', minHeight: 24, maxHeight: 160, overflowY: 'auto', lineHeight: 1.55, padding: '12px 14px 4px' }}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', outline: 'none', color: 'var(--t1)', fontSize: 15, fontFamily: 'var(--ff-body)', resize: 'none', minHeight: 24, maxHeight: 160, overflowY: 'auto', lineHeight: 1.55, padding: '12px 14px 4px' }}
         />
 
         {/* Row 2 — action bar */}
@@ -981,7 +1415,7 @@ export function Composer({ placeholder, disabled, onSend, uploadFile, onCreatePo
               )}
               {pop === 'poll' && onCreatePoll && (
                 <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: 0, zIndex: 270 }}>
-                  <PollComposer onCreate={(q, o, m) => onCreatePoll(q, o, m)} onClose={() => setPop(null)} />
+                  <PollComposer onCreate={(q, o, m, d) => onCreatePoll(q, o, m, d)} onClose={() => setPop(null)} />
                 </div>
               )}
             </div>
@@ -1005,7 +1439,7 @@ export function Composer({ placeholder, disabled, onSend, uploadFile, onCreatePo
               {pop === 'lang' && (
                 <div className="il-scale-in" style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: 0, width: 210, maxHeight: 280, overflowY: 'auto', background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-lg)', boxShadow: '0 8px 32px rgba(0,0,0,.5)', zIndex: 250, padding: 5 }}>
                   {STT_LANGUAGES.map((l) => (
-                    <button key={l.code} onClick={() => { stt.setLanguage(l.code); setPop(null); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '7px 9px', background: stt.lang === l.code ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: stt.lang === l.code ? 'var(--primary)' : 'var(--t2)', borderRadius: 6, fontSize: 12.5, fontFamily: "'DM Sans',sans-serif" }}>
+                    <button key={l.code} onClick={() => { stt.setLanguage(l.code); setPop(null); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '7px 9px', background: stt.lang === l.code ? 'var(--primary-dim)' : 'none', border: 'none', cursor: 'pointer', color: stt.lang === l.code ? 'var(--primary)' : 'var(--t2)', borderRadius: 6, fontSize: 12.5, fontFamily: 'var(--ff-body)' }}>
                       {l.label}{stt.lang === l.code && <Ic.Check s={13} />}
                     </button>
                   ))}
@@ -1024,7 +1458,7 @@ export function Composer({ placeholder, disabled, onSend, uploadFile, onCreatePo
             onClick={send}
             disabled={!canSend || disabled || sending}
             title="Send"
-            style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: canSend ? 'pointer' : 'default', background: canSend ? 'var(--primary)' : 'var(--bg-active)', color: canSend ? '#fff' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s', boxShadow: canSend ? '0 2px 10px var(--primary-dim)' : 'none', marginLeft: 2, flexShrink: 0 }}
+            style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', cursor: canSend ? 'pointer' : 'default', background: canSend ? 'var(--primary)' : 'var(--bg-active)', color: canSend ? '#11183d' : 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s var(--ease)', boxShadow: canSend ? 'var(--sh-glow)' : 'none', marginLeft: 2, flexShrink: 0 }}
           >
             {sending ? <Ic.Loader s={16} className="il-spin" /> : <Ic.Send s={16} c="currentColor" />}
           </button>

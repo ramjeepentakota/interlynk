@@ -41,6 +41,15 @@ html, body, #root {
   height: 100dvh !important;
 }
 
+/* Call panel fills the dynamic viewport. The 100vh line is a fallback for
+   browsers that don't understand dvh; the dvh line wins where supported and
+   accounts for the mobile URL bar so the bottom control row is never pushed
+   off-screen / hidden behind the browser chrome. */
+.il-callpanel {
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+
 /* ────────────────────────────────────────────────────────────────────────
    3. TV / 4K / ultrawide — scale tokens up so the UI doesn't look tiny.
    ──────────────────────────────────────────────────────────────────────── */
@@ -137,9 +146,9 @@ html, body, #root {
 
   /* Topbar tightens up on mobile */
   .il-topbar {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    gap: 4px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    gap: 2px !important;
   }
   /* Hide the channel description on mobile — title only. */
   .il-topbar [data-desc] {
@@ -147,6 +156,12 @@ html, body, #root {
   }
   /* Mobile: condense topbar action group — only most important icons. */
   .il-topbar [data-topbar-action="dim"] { display: none !important; }
+  /* Make the topbar icon buttons a touch larger / more tappable on mobile,
+     so the new settings + profile shortcuts are reachable with a thumb. */
+  .il-topbar button {
+    min-width: 36px;
+    min-height: 36px;
+  }
 
   /* Notifications popover full-width on mobile */
   .il-notif-pop {
@@ -226,7 +241,14 @@ html, body, #root {
     padding: 16px !important;
   }
 
-  /* Call panel — compact controls */
+  /* Call panel — compact controls. Wrap + safe-area bottom padding so every
+     control (mute / camera / screen / speaker / add / leave) stays visible and
+     tappable above the phone's home indicator. */
+  .il-callpanel-controls {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   .il-callpanel-controls button {
     width: 44px !important;
     height: 44px !important;

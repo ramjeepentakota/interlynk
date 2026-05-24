@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
-    
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -40,6 +40,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginHistoryService loginHistoryService;
     private final AuditService auditService;
+    private final com.enterprise.collab.service.AdminSecurityService adminSecurityService;
     
     @Value("${app.security.jwt.expiration}")
     private long jwtExpiration;
@@ -117,28 +118,75 @@ public class AuthService {
                     "Account status: " + user.getStatus());
             throw new UnauthorizedException("Account is not active. Please contact administrator.");
         }
+
+        boolean rememberMe = request.isRememberMe();
+
+        // If MFA is active on this account, pause here. The user has not yet
+        // proven possession of their second factor — issue a short-lived
+        // challenge token instead of access/refresh JWTs.
+        if (user.isMfaEnabled() && user.getMfaSecret() != null) {
+            String challenge = tokenProvider.generateMfaChallenge(user.getUsername(), user.getId(), rememberMe);
+            auditService.record(user.getUsername(), "LOGIN_MFA_REQUIRED", "User", user.getId());
+            return AuthDto.AuthResponse.builder()
+                    .mfaRequired(true)
+                    .mfaChallenge(challenge)
+                    .tokenType("Bearer")
+                    .user(mapToUserDto(user))
+                    .build();
+        }
+
+        return completeLogin(user, rememberMe);
+    }
+
+    /**
+     * Stage 2 of an MFA-protected sign-in: exchange a challenge JWT + the
+     * 6-digit code from the user's authenticator app (or a backup code) for
+     * the real access / refresh token pair.
+     */
+    public AuthDto.AuthResponse loginMfa(AuthDto.MfaLoginRequest request) {
+        io.jsonwebtoken.Claims claims = tokenProvider.validateMfaChallenge(request.getMfaChallenge());
+        if (claims == null) {
+            throw new UnauthorizedException("Your MFA challenge has expired. Sign in again.");
+        }
+        String username = claims.getSubject();
+        boolean rememberMe = Boolean.TRUE.equals(claims.get("rememberMe", Boolean.class));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (user.getStatus() != User.UserStatus.ACTIVE) {
+            loginHistoryService.recordFailure(user.getUsername(),
+                    "Account status: " + user.getStatus());
+            throw new UnauthorizedException("Account is not active. Please contact administrator.");
+        }
+        if (!user.isMfaEnabled() || user.getMfaSecret() == null) {
+            // Defensive: someone replayed a stale challenge after MFA was
+            // revoked. Treat as a hard failure rather than silently succeeding.
+            throw new UnauthorizedException("MFA is no longer enabled on this account.");
+        }
+        if (!adminSecurityService.verifyMfaForLogin(user, request.getCode())) {
+            loginHistoryService.recordFailure(user.getUsername(), "Invalid MFA code");
+            auditService.record(user.getUsername(), "LOGIN_MFA_FAILED", "User", user.getId());
+            throw new UnauthorizedException("Invalid verification code.");
+        }
+        auditService.record(user.getUsername(), "LOGIN_MFA_SUCCESS", "User", user.getId());
+        return completeLogin(user, rememberMe);
+    }
+
+    /** Shared tail end of login: record history, refresh presence, mint tokens. */
+    private AuthDto.AuthResponse completeLogin(User user, boolean rememberMe) {
         loginHistoryService.recordSuccess(user.getUsername());
-        
-        // Update presence to online
+
         user.setPresence(User.Presence.ONLINE);
         user.setLastSeenAt(LocalDateTime.now());
         userRepository.save(user);
-        
-        // Get expiration based on rememberMe flag
-        boolean rememberMe = request.isRememberMe();
+
         long tokenExpiration = tokenProvider.getExpirationForRememberMe(rememberMe);
-        
-        // Generate tokens with appropriate expiration
         String accessToken = tokenProvider.generateTokenWithExpiration(user.getUsername(), user.getId(), tokenExpiration);
-        
-        // If rememberMe is true, create a longer-lived refresh token
-        RefreshToken refreshToken;
-        if (rememberMe) {
-            refreshToken = refreshTokenService.createRememberMeRefreshToken(user.getUsername());
-        } else {
-            refreshToken = refreshTokenService.createRefreshToken(user.getUsername());
-        }
-        
+        RefreshToken refreshToken = rememberMe
+                ? refreshTokenService.createRememberMeRefreshToken(user.getUsername())
+                : refreshTokenService.createRefreshToken(user.getUsername());
+
         log.info("User logged in: {} (rememberMe: {})", user.getUsername(), rememberMe);
         auditService.record(user.getUsername(), "LOGIN_SUCCESS", "User", user.getId());
 

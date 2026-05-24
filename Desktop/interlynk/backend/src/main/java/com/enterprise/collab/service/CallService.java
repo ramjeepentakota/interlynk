@@ -90,11 +90,12 @@ public class CallService {
             throw new BadRequestException("Cannot join an inactive call room");
         }
         
-        // Check if already a participant
+        // Check if already an active participant (use the leftAt-filtered query to
+        // avoid IncorrectResultSizeDataAccessException when the same user has left-and-rejoined)
         Optional<CallParticipant> existingParticipant = callParticipantRepository
-                .findByCallRoomIdAndUserId(roomId, userId);
-        
-        if (existingParticipant.isPresent() && existingParticipant.get().getLeftAt() == null) {
+                .findByCallRoomIdAndUserIdAndLeftAtIsNull(roomId, userId);
+
+        if (existingParticipant.isPresent()) {
             log.info("User {} is already an active participant in call room {}, returning existing participant", userId, roomId);
             return mapToParticipantResponse(existingParticipant.get());
         }
@@ -125,7 +126,7 @@ public class CallService {
     @Transactional
     public void removeParticipant(Long roomId, Long userId) {
         CallParticipant participant = callParticipantRepository
-                .findByCallRoomIdAndUserId(roomId, userId)
+                .findByCallRoomIdAndUserIdAndLeftAtIsNull(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
         
         participant.setLeftAt(LocalDateTime.now());
@@ -162,9 +163,9 @@ public class CallService {
             Boolean isMuted, Boolean isVideoEnabled, Boolean isScreenSharing) {
         
         CallParticipant participant = callParticipantRepository
-                .findByCallRoomIdAndUserId(roomId, userId)
+                .findByCallRoomIdAndUserIdAndLeftAtIsNull(roomId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
-        
+
         if (isMuted != null) {
             participant.setIsMuted(isMuted);
         }
@@ -287,6 +288,43 @@ public class CallService {
         );
         log.info("Incoming call notification sent to user '{}' (id={}) for room {}",
                 targetUser.getUsername(), targetUserId, notification.getRoomId());
+    }
+
+    /**
+     * Invite an additional user into an EXISTING call room (the "add person to
+     * the call" feature). Pre-registers the invitee as a participant so the SFU
+     * token endpoint authorizes them the instant they accept (no join race),
+     * then rings them with a GROUP incoming-call so their client joins via the
+     * multi-party SFU path rather than the 1:1 mesh.
+     */
+    @Transactional
+    public void inviteToRoom(Long roomId, Long callerId, Long targetUserId, String callType) {
+        if (targetUserId == null) {
+            throw new BadRequestException("targetUserId is required");
+        }
+        CallRoom room = callRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Call room", "id", roomId));
+        if (!room.getIsActive()) {
+            throw new BadRequestException("Cannot add someone to an inactive call");
+        }
+        User caller = userRepository.findById(callerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", callerId));
+
+        // Pre-authorize the invitee for this room's media token.
+        addParticipant(roomId, targetUserId);
+
+        CallDto.IncomingCallNotification notification = CallDto.IncomingCallNotification.builder()
+                .roomId(roomId)
+                .callerUserId(callerId)
+                .callerUsername(caller.getUsername())
+                .callerDisplayName(caller.getDisplayName())
+                .callerAvatarUrl(caller.getAvatarUrl())
+                .callType("video".equalsIgnoreCase(callType) ? "video" : "voice")
+                .isGroup(true)
+                .build();
+        sendIncomingCallNotification(targetUserId, notification);
+
+        log.info("User {} invited user {} into call room {}", callerId, targetUserId, roomId);
     }
 
     

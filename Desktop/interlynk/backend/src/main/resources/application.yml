@@ -25,7 +25,9 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:interlynk}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useConfigs=maxPerformance
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Jackma@939512}
+    # No default: the DB password must be supplied via the DB_PASSWORD env var.
+    # For local runs, backend/start.bat loads it from an untracked env.local.bat.
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
@@ -88,6 +90,11 @@ spring:
 
 # Application-specific configuration
 app:
+  # Seed throwaway demo/test accounts (demo, jay). Keep false in production.
+  seed-demo-users: ${SEED_DEMO_USERS:false}
+  # Initial admin password — override in every real environment.
+  admin:
+    initial-password: ${ADMIN_INITIAL_PASSWORD:admin@123}
   # Security configuration
   security:
     jwt:
@@ -97,10 +104,11 @@ app:
       remember-me-expiration: ${JWT_REMEMBER_ME_EXPIRATION:2592000000}  # 30 days in milliseconds
       remember-me-refresh-expiration: ${JWT_REMEMBER_ME_REFRESH_EXPIRATION:5184000000}  # 60 days in milliseconds
     password:
-      bcrypt-cost: 4
+      bcrypt-cost: ${BCRYPT_COST:12}
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
-      requests-per-minute: 100
+      requests-per-minute: ${RATE_LIMIT_RPM:100}
+      auth-requests-per-minute: ${RATE_LIMIT_AUTH_RPM:10}
       requests-per-hour: 1000
   
   # File storage configuration
@@ -115,6 +123,9 @@ app:
   
   # Code execution configuration
   execution:
+    # DISABLED by default: the runner executes user code directly on the host
+    # with no sandbox. Do not enable in production without container isolation.
+    enabled: ${CODE_EXECUTION_ENABLED:false}
     timeout: 30000  # 30 seconds
     memory-limit: 524288000  # 512MB
     max-output-size: 1048576  # 1MB
@@ -162,6 +173,15 @@ livekit:
   api-key: ${LIVEKIT_API_KEY:}    # e.g. APIxxxxxxxxxxx
   api-secret: ${LIVEKIT_API_SECRET:}
   token-ttl-seconds: ${LIVEKIT_TOKEN_TTL:21600}  # 6 hours
+
+# Self-hosted mediasoup SFU (group voice/video). Spring mints join tokens; the
+# SFU verifies them with the SAME secret. Leave blank to disable group calling.
+# The SFU service lives in /sfu (see sfu/README.md). jwt-secret here MUST equal
+# the SFU's SFU_JWT_SECRET.
+sfu:
+  url: ${SFU_URL:}                       # e.g. https://your-host:4443 (Socket.IO origin)
+  jwt-secret: ${SFU_JWT_SECRET:}
+  token-ttl-seconds: ${SFU_TOKEN_TTL:21600}  # 6 hours
 
 # Logging configuration (rolling + JSON appenders live in logback-spring.xml)
 logging:

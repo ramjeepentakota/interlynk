@@ -141,6 +141,18 @@
             <artifactId>org.eclipse.jgit</artifactId>
             <version>5.13.1.202206130422-r</version>
         </dependency>
+
+        <!-- ZXing for MFA QR-code rendering (TOTP enrollment) -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
         
         <!-- Test dependencies -->
         <dependency>

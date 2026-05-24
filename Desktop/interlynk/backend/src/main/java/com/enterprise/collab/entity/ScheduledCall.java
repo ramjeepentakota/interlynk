@@ -20,7 +20,8 @@ import java.util.Set;
 @Table(name = "scheduled_calls",
        indexes = {
            @Index(name = "idx_sched_call_activate", columnList = "status, scheduled_at"),
-           @Index(name = "idx_sched_call_creator", columnList = "created_by")
+           @Index(name = "idx_sched_call_creator", columnList = "created_by"),
+           @Index(name = "idx_sched_call_meeting_code", columnList = "meeting_code", unique = true)
        })
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -72,6 +73,15 @@ public class ScheduledCall {
     /** Set once the call goes live and a CallRoom has been created. */
     @Column(name = "call_room_id")
     private Long callRoomId;
+
+    /**
+     * Human-shareable, URL-safe meeting code (e.g. "abc-defg-hij"). Generated at
+     * schedule() time and unique across all scheduled calls. The corresponding
+     * shareable join URL is just /join/{meetingCode} — clients build it from
+     * this code so the backend never has to know the public host.
+     */
+    @Column(name = "meeting_code", length = 32, unique = true)
+    private String meetingCode;
 
     /** Stamped when the "starting soon" reminder was pushed, so we send it once. */
     @Column(name = "reminder_sent_at")

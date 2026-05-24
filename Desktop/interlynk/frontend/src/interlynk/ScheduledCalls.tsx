@@ -49,6 +49,38 @@ function toast(title: string, message?: string, tone: 'info' | 'warn' = 'info') 
   window.dispatchEvent(new CustomEvent('il-toast', { detail: { title, message: message || '', tone } }));
 }
 
+/** Build an absolute shareable URL from a relative meetingLink so users can
+ *  paste it anywhere without losing context. */
+function absoluteMeetingUrl(meetingLink: string | null | undefined): string | null {
+  if (!meetingLink) return null;
+  if (/^https?:\/\//i.test(meetingLink)) return meetingLink;
+  if (typeof window === 'undefined') return meetingLink;
+  return `${window.location.origin}${meetingLink}`;
+}
+
+/** Best-effort copy that falls back through deprecated APIs for non-secure contexts. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function ScheduledCallsModal() {
   const { currentUser, searchUsers, startScheduledCall, joinScheduledCall } = useApp();
 
@@ -201,36 +233,71 @@ export function ScheduledCallsModal() {
     }
   };
 
-  const startCall = async (call: ScheduledCall) => {
+  // Host "Start call" and invitee/host "Join" now take the SAME path: ask the
+  // backend for the call's single shared room (it creates one on first join and
+  // returns the same id thereafter), then hop into that room. This is what
+  // fixes everyone sitting alone at "waiting for others to join" — previously
+  // each click created its own group room, so nobody was ever grouped.
+  const enterSharedRoom = async (call: ScheduledCall) => {
     setBusyId(call.id);
     try {
-      await startScheduledCall({ callType: call.callType, title: call.title, invitees: call.invitees });
+      const { data } = await scheduledCallApi.joinLive(call.id);
+      const roomId = data?.callRoomId;
+      if (roomId == null) {
+        toast('Could not open the call room', 'Please try again in a moment.', 'warn');
+        return;
+      }
+      await joinScheduledCall({ roomId, callType: data.callType, title: data.title });
       setOpen(false);
+    } catch (e: any) {
+      toast('Could not join the call', e?.response?.data?.message || 'Please try again.', 'warn');
     } finally {
       setBusyId(null);
     }
   };
 
-  // Invitee-or-host join: when the backend has flipped the call to ACTIVE
-  // and there's a callRoomId, join that existing room directly. Otherwise
-  // (host wants to launch early) fall back to startScheduledCall.
-  const joinCall = async (call: ScheduledCall) => {
-    setBusyId(call.id);
-    try {
-      if (call.status === 'ACTIVE' && call.callRoomId != null) {
-        await joinScheduledCall({
-          roomId: call.callRoomId,
-          callType: call.callType,
-          title: call.title,
-        });
-      } else {
-        await startScheduledCall({ callType: call.callType, title: call.title, invitees: call.invitees });
-      }
-      setOpen(false);
-    } finally {
-      setBusyId(null);
+  const startCall = enterSharedRoom;
+  const joinCall = enterSharedRoom;
+
+  // Join by shareable meeting code. Looks up the call, hops into its shared
+  // room — same path everyone else takes — so the caller lands in the SFU
+  // alongside the host and every other invitee.
+  const joinByCode = useCallback(async (rawCode: string) => {
+    const code = rawCode.trim().toLowerCase();
+    if (!code) {
+      toast('Enter a meeting code', 'e.g. abc-defg-hij', 'warn');
+      return;
     }
-  };
+    try {
+      const { data } = await scheduledCallApi.joinByCode(code);
+      const roomId = data?.callRoomId;
+      if (roomId == null) {
+        toast('Could not open the call room', 'Please try again in a moment.', 'warn');
+        return;
+      }
+      await joinScheduledCall({ roomId, callType: data.callType, title: data.title });
+      setOpen(false);
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message
+        || (status === 404 ? 'No meeting matches that code.' : 'Please double-check the code and try again.');
+      toast('Could not join by code', msg, 'warn');
+    }
+  }, [joinScheduledCall]);
+
+  // Auto-consume a pending join code captured from a /join/<code> URL at app
+  // bootstrap. Runs once the user is signed in (currentUser available) so the
+  // join API call carries a valid auth token. Cleared after consumption so a
+  // re-render doesn't trigger a second join attempt.
+  useEffect(() => {
+    if (!currentUser) return;
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem('il-pending-join-code'); } catch { /* noop */ }
+    if (!pending) return;
+    try { sessionStorage.removeItem('il-pending-join-code'); } catch { /* noop */ }
+    void joinByCode(pending);
+  }, [currentUser, joinByCode]);
 
   if (!open) return null;
 
@@ -249,7 +316,7 @@ export function ScheduledCallsModal() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid var(--bd)' }}>
           <span style={{ color: 'var(--primary)', display: 'flex' }}><Ic.Calendar s={18} /></span>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>
             {view === 'list' ? 'Scheduled calls' : 'Schedule a call'}
           </div>
           <div style={{ flex: 1 }} />
@@ -277,6 +344,7 @@ export function ScheduledCallsModal() {
               isHost={isHost}
               onStart={startCall}
               onJoin={joinCall}
+              onJoinByCode={joinByCode}
               onCancel={cancelCall}
               onNew={goCreate}
             />
@@ -318,7 +386,7 @@ function isJoinable(c: ScheduledCall): boolean {
 }
 
 function ListView({
-  calls, loading, busyId, isHost, onStart, onJoin, onCancel, onNew,
+  calls, loading, busyId, isHost, onStart, onJoin, onJoinByCode, onCancel, onNew,
 }: {
   calls: ScheduledCall[];
   loading: boolean;
@@ -326,81 +394,168 @@ function ListView({
   isHost: (c: ScheduledCall) => boolean;
   onStart: (c: ScheduledCall) => void;
   onJoin: (c: ScheduledCall) => void;
+  onJoinByCode: (code: string) => void;
   onCancel: (id: number) => void;
   onNew: () => void;
 }) {
   if (loading) {
     return <div style={{ textAlign: 'center', color: 'var(--t3)', padding: '32px 0', fontSize: 13 }}>Loading…</div>;
   }
-  if (calls.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--t3)' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, opacity: 0.6 }}><Ic.Calendar s={34} /></div>
-        <div style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 4 }}>No upcoming calls</div>
-        <div style={{ fontSize: 12.5, marginBottom: 16 }}>Schedule a call and everyone you invite gets notified.</div>
-        <Btn variant="primary" size="sm" onClick={onNew}><Ic.Plus s={14} /> Schedule a call</Btn>
-      </div>
-    );
-  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {calls.map((c) => {
-        const badge = STATUS_BADGE[c.status];
-        const host = isHost(c);
-        return (
-          <div key={c.id} style={{ border: '1px solid var(--bd)', borderRadius: 12, padding: '12px 14px', background: 'var(--bg-hover)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: c.callType === 'video' ? 'var(--primary)' : 'var(--ok)', display: 'flex' }}>
-                {c.callType === 'video' ? <Ic.Video s={16} /> : <Ic.Phone s={16} />}
-              </span>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--t1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
-              <Badge variant={badge.variant}>{badge.label}</Badge>
-            </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <JoinByCode onJoin={onJoinByCode} />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, color: 'var(--t3)', fontSize: 12.5 }}>
-              <Ic.Clock s={13} />
-              <span>{formatWhen(c.scheduledAt)}</span>
-              <span style={{ opacity: 0.5 }}>· {c.durationMinutes} min</span>
-              {!host && <span style={{ opacity: 0.7 }}>· hosted by {c.createdByDisplayName || c.createdByUsername}</span>}
-            </div>
+      {calls.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--t3)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, opacity: 0.6 }}><Ic.Calendar s={34} /></div>
+          <div style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 4 }}>No upcoming calls</div>
+          <div style={{ fontSize: 12.5, marginBottom: 16 }}>Schedule a call and everyone you invite gets notified.</div>
+          <Btn variant="primary" size="sm" onClick={onNew}><Ic.Plus s={14} /> Schedule a call</Btn>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {calls.map((c) => {
+            const badge = STATUS_BADGE[c.status];
+            const host = isHost(c);
+            return (
+              <div key={c.id} style={{ border: '1px solid var(--bd)', borderRadius: 12, padding: '12px 14px', background: 'var(--bg-hover)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: c.callType === 'video' ? 'var(--primary)' : 'var(--ok)', display: 'flex' }}>
+                    {c.callType === 'video' ? <Ic.Video s={16} /> : <Ic.Phone s={16} />}
+                  </span>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--t1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                </div>
 
-            {c.invitees.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                {c.invitees.slice(0, 5).map((u) => (
-                  <div key={u.userId} title={u.displayName || u.username} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--bg-card,#1c1c34)', borderRadius: 20, padding: '2px 8px 2px 2px' }}>
-                    <Avatar user={{ name: u.displayName || u.username, avatar: u.avatarUrl }} size={18} />
-                    <span style={{ fontSize: 11.5, color: 'var(--t2)' }}>{u.displayName || u.username}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, color: 'var(--t3)', fontSize: 12.5 }}>
+                  <Ic.Clock s={13} />
+                  <span>{formatWhen(c.scheduledAt)}</span>
+                  <span style={{ opacity: 0.5 }}>· {c.durationMinutes} min</span>
+                  {!host && <span style={{ opacity: 0.7 }}>· hosted by {c.createdByDisplayName || c.createdByUsername}</span>}
+                </div>
+
+                {c.meetingCode && <MeetingCodeRow code={c.meetingCode} link={c.meetingLink} />}
+
+                {c.invitees.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {c.invitees.slice(0, 5).map((u) => (
+                      <div key={u.userId} title={u.displayName || u.username} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--bg-card,#1c1c34)', borderRadius: 20, padding: '2px 8px 2px 2px' }}>
+                        <Avatar user={{ name: u.displayName || u.username, avatar: u.avatarUrl }} size={18} />
+                        <span style={{ fontSize: 11.5, color: 'var(--t2)' }}>{u.displayName || u.username}</span>
+                      </div>
+                    ))}
+                    {c.invitees.length > 5 && <span style={{ fontSize: 11.5, color: 'var(--t3)' }}>+{c.invitees.length - 5}</span>}
                   </div>
-                ))}
-                {c.invitees.length > 5 && <span style={{ fontSize: 11.5, color: 'var(--t3)' }}>+{c.invitees.length - 5}</span>}
-              </div>
-            )}
+                )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {c.status === 'PENDING' && host && (
-                <Btn variant="danger" size="sm" disabled={busyId === c.id} onClick={() => onCancel(c.id)}>Cancel</Btn>
-              )}
-              {c.status === 'ACTIVE' && host && (
-                <Btn variant="success" size="sm" disabled={busyId === c.id} onClick={() => onStart(c)}>
-                  <Ic.Phone s={13} /> {busyId === c.id ? 'Starting…' : 'Start call'}
-                </Btn>
-              )}
-              {/* Join is available to anyone (host or invitee) for any
-                  PENDING or ACTIVE call — no time-gated lockout. */}
-              {(c.status === 'PENDING' || c.status === 'ACTIVE') && (
-                <Btn
-                  variant="primary"
-                  size="sm"
-                  disabled={busyId === c.id}
-                  onClick={() => onJoin(c)}
-                >
-                  <Ic.Phone s={13} /> {busyId === c.id ? 'Joining…' : 'Join'}
-                </Btn>
-              )}
-            </div>
-          </div>
-        );
-      })}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  {c.status === 'PENDING' && host && (
+                    <Btn variant="danger" size="sm" disabled={busyId === c.id} onClick={() => onCancel(c.id)}>Cancel</Btn>
+                  )}
+                  {c.status === 'ACTIVE' && host && (
+                    <Btn variant="success" size="sm" disabled={busyId === c.id} onClick={() => onStart(c)}>
+                      <Ic.Phone s={13} /> {busyId === c.id ? 'Starting…' : 'Start call'}
+                    </Btn>
+                  )}
+                  {/* Join is available to anyone (host or invitee) for any
+                      PENDING or ACTIVE call — no time-gated lockout. */}
+                  {(c.status === 'PENDING' || c.status === 'ACTIVE') && (
+                    <Btn
+                      variant="primary"
+                      size="sm"
+                      disabled={busyId === c.id}
+                      onClick={() => onJoin(c)}
+                    >
+                      <Ic.Phone s={13} /> {busyId === c.id ? 'Joining…' : 'Join'}
+                    </Btn>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Meeting code row ───────────────────────────────────── */
+/** Shows the shareable code on a scheduled-call card with one-tap copy for
+ *  both the code itself and the full join URL. Mirrors the Zoom/Meet pattern. */
+function MeetingCodeRow({ code, link }: { code: string; link?: string | null }) {
+  const url = absoluteMeetingUrl(link);
+  const flash = useCallback(async (text: string, label: string) => {
+    const ok = await copyText(text);
+    toast(ok ? `${label} copied` : `Could not copy`, ok ? text : undefined, ok ? 'info' : 'warn');
+  }, []);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+      <div
+        title="Click to copy code"
+        onClick={() => flash(code, 'Code')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontFamily: 'var(--ff-mono)', fontSize: 12,
+          background: 'var(--primary-dim)', color: 'var(--primary)',
+          border: '1px solid var(--bd2)', borderRadius: 8,
+          padding: '3px 8px', cursor: 'pointer',
+        }}
+      >
+        <Ic.Hash s={11} />
+        {code}
+      </div>
+      {url && (
+        <button
+          type="button"
+          onClick={() => flash(url, 'Link')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            fontSize: 11.5, color: 'var(--t3)',
+            background: 'transparent', border: '1px dashed var(--bd2,rgba(255,255,255,.15))',
+            borderRadius: 8, padding: '3px 8px', cursor: 'pointer',
+          }}
+        >
+          <Ic.Clip s={11} /> Copy join link
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Join-by-code input ─────────────────────────────────── */
+/** Compact input at the top of the list so anyone with a code can hop into
+ *  the matching meeting without needing it in their upcoming list. */
+function JoinByCode({ onJoin }: { onJoin: (code: string) => void }) {
+  const [code, setCode] = useState('');
+  const submit = () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    onJoin(trimmed);
+    setCode('');
+  };
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 12px', borderRadius: 12,
+        background: 'var(--bg-hover)', border: '1px solid var(--bd)',
+      }}
+    >
+      <span style={{ color: 'var(--primary)', display: 'flex' }}><Ic.Hash s={14} /></span>
+      <input
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+        placeholder="Have a meeting code? e.g. abc-defg-hij"
+        style={{
+          flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 13,
+          fontFamily: 'var(--ff-mono)',
+          background: 'transparent', border: 'none', color: 'var(--t1)', outline: 'none',
+        }}
+      />
+      <Btn variant="primary" size="sm" disabled={!code.trim()} onClick={submit}>
+        <Ic.Phone s={13} /> Join
+      </Btn>
     </div>
   );
 }
@@ -422,7 +577,7 @@ function CreateView({
   onStartInstant: () => void;
 }) {
   const fieldStyle: React.CSSProperties = {
-    width: '100%', padding: '9px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif",
+    width: '100%', padding: '9px 12px', fontSize: 14, fontFamily: 'var(--ff-body)',
     background: 'var(--bg-hover)', border: '1.5px solid var(--bd)', borderRadius: 'var(--r)',
     color: 'var(--t1)', outline: 'none',
   };

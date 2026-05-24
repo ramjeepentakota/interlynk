@@ -44,7 +44,7 @@ export function Avatar({
           color: '#fff',
           fontWeight: 700,
           fontSize: size * 0.375,
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: 'var(--ff-body)',
           userSelect: 'none',
           overflow: 'hidden',
         }}
@@ -138,6 +138,7 @@ export function Btn({
   disabled,
   style,
   className,
+  title,
 }: {
   children: ReactNode;
   variant?: 'primary' | 'ghost' | 'outline' | 'danger' | 'success' | 'active' | 'dim';
@@ -146,6 +147,7 @@ export function Btn({
   disabled?: boolean;
   style?: CSSProperties;
   className?: string;
+  title?: string;
 }) {
   const [h, hp] = useHover();
   const vs: Record<string, CSSProperties> = {
@@ -170,6 +172,7 @@ export function Btn({
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       {...hp}
       className={className}
       style={{
@@ -177,7 +180,7 @@ export function Btn({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        fontFamily: "'DM Sans',sans-serif",
+        fontFamily: 'var(--ff-body)',
         fontWeight: 500,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
@@ -248,7 +251,7 @@ export function Input({
             width: '100%',
             padding: `9px ${rightIcon ? 36 : 12}px 9px ${icon ? 36 : 12}px`,
             fontSize: 14,
-            fontFamily: "'DM Sans',sans-serif",
+            fontFamily: 'var(--ff-body)',
             background: 'var(--bg-hover)',
             border: `1.5px solid ${focused ? 'var(--primary)' : 'var(--bd)'}`,
             borderRadius: 'var(--r)',

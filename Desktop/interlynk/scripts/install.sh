@@ -39,13 +39,19 @@ systemctl enable mysql
 systemctl start mysql
 
 # Secure MySQL installation
+# The DB password must be provided via the environment — never hardcode secrets
+# in this script (it is committed to source control).
+if [ -z "${DB_PASSWORD}" ]; then
+    echo -e "${RED}DB_PASSWORD is not set. Run: DB_PASSWORD='your-strong-password' sudo -E bash install.sh${NC}"
+    exit 1
+fi
 echo -e "${YELLOW}Setting up MySQL root password...${NC}"
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'Jackma@939512';"
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';"
 mysql -e "FLUSH PRIVILEGES;"
 
 # Create database
 echo -e "${YELLOW}Creating database...${NC}"
-mysql -uroot -pJackma@939512 -e "CREATE DATABASE IF NOT EXISTS interlynk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -uroot -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS interlynk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Install Git (for code collaboration)
 echo -e "${YELLOW}Installing Git...${NC}"
@@ -117,9 +123,9 @@ echo "2. Start the service: systemctl start enterprise-collab"
 echo "3. Enable at boot: systemctl enable enterprise-collab"
 echo "4. Check status: systemctl status enterprise-collab"
 echo ""
-echo -e "${YELLOW}Default credentials:${NC}"
+echo -e "${YELLOW}Admin login:${NC}"
 echo "Username: admin"
-echo "Password: admin123"
+echo "Password: value of ADMIN_INITIAL_PASSWORD (defaults to admin@123 — change immediately)"
 echo ""
 echo -e "${YELLOW}Access the application at:${NC}"
 echo "http://your-server-ip:8080"

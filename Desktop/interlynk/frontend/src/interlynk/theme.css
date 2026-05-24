@@ -1,143 +1,280 @@
-/* InterLynk design tokens, base styles, keyframes — ported verbatim from the
-   Claude Design handoff (InterLynk.html <style> block). */
+/* ────────────────────────────────────────────────────────────────────
+   NARADA · Production theme.css
+   Drop-in replacement for: frontend/src/interlynk/theme.css
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+   Why a drop-in works:
+   This file keeps EVERY CSS variable name the existing components
+   reference (--bg-base, --bg-sidebar, --bg-main, --bg-elv, --bg-hover,
+   --bg-active, --bd, --bd2, --primary, --primary-h, --primary-l,
+   --primary-dim, --primary-glow, --ok, --warn, --err, --t1, --t2,
+   --t3, --t-link, --rail-w, --side-w, --right-w, --topbar-h, --r,
+   --r-lg, --r-xl). Only the VALUES change. No component edits required
+   for the new look to land.
+
+   The fonts switch from DM Sans/Outfit → IBM Plex Sans + Fraunces
+   via a body override; any 'DM Sans' references in inline styles will
+   still fall through to the system stack and look good.
+   ──────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Tiro+Devanagari+Hindi&display=swap');
 
 :root {
-  --bg-base:     #07080d;
-  --bg-sidebar:  #1e2048;
-  --bg-main:     #0c0d1a;
-  --bg-elv:      #252856;
-  --bg-hover:    #2a2e60;
-  --bg-active:   #30346c;
-  --bd:          #363b78;
-  --bd2:         #4a5094;
-  --primary:     #8b5cf6;
-  --primary-h:   #7c3aed;
-  --primary-l:   #a78bfa;
-  --primary-dim: rgba(139,92,246,0.16);
-  --primary-glow:0 0 24px rgba(139,92,246,0.35);
-  --ok:          #22c55e;
-  --ok-dim:      rgba(34,197,94,0.15);
-  --warn:        #f59e0b;
-  --warn-dim:    rgba(245,158,11,0.15);
-  --err:         #ef4444;
-  --err-dim:     rgba(239,68,68,0.15);
-  --t1:          #eeedf8;
-  --t2:          #9896c0;
-  --t3:          #5e5c80;
-  --t-link:      #a78bfa;
-  --rail-w:      66px;
-  --side-w:      238px;
-  --right-w:     258px;
-  --topbar-h:    52px;
-  --r:           8px;
-  --r-lg:        12px;
-  --r-xl:        18px;
+  /* === Background scale === */
+  --bg-base:     #06081a;   /* deepest — outer body, rail */
+  --bg-sidebar:  #0e1330;   /* sidebar surface */
+  --bg-main:     #0a0e26;   /* main content column */
+  --bg-elv:      #11183d;   /* elevated cards, modals */
+  --bg-hover:    #1a2456;   /* row hover */
+  --bg-active:   #243066;   /* selected row */
+
+  /* === Borders === */
+  --bd:          rgba(212,165,72,0.10);   /* hairline borders — gold tinted */
+  --bd2:         rgba(212,165,72,0.20);   /* stronger borders */
+
+  /* === Brand — Narada gold === */
+  --primary:     #d4a548;
+  --primary-h:   #c89638;
+  --primary-l:   #e2b462;
+  --primary-dim: rgba(212,165,72,0.14);
+  --primary-glow: 0 0 28px rgba(212,165,72,0.28);
+  --primary-orb: rgba(212,165,72,0.04);
+
+  /* === Status === */
+  --ok:          #3aa57a;
+  --ok-dim:      rgba(58,165,122,0.16);
+  --warn:        #c1502e;
+  --warn-dim:    rgba(193,80,46,0.18);
+  --err:         #d04354;
+  --err-dim:     rgba(208,67,84,0.18);
+
+  /* === Text === */
+  --t1:          #f6f1e7;       /* ivory — primary */
+  --t2:          #a4a5c0;       /* muted */
+  --t3:          #6a6c8c;       /* faint */
+  --t-link:      #e2b462;
+
+  /* === Geometry === */
+  --rail-w:      72px;
+  --side-w:      264px;
+  --right-w:     280px;
+  --topbar-h:    56px;
+  --r:           10px;
+  --r-lg:        14px;
+  --r-xl:        20px;
+
+  /* === Additions (new — opt-in for components that want them) === */
+  --ff-display:  'Fraunces', 'Tiro Devanagari Hindi', Georgia, serif;
+  --ff-body:     'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ff-mono:     'IBM Plex Mono', 'JetBrains Mono', Consolas, monospace;
+  --ff-deva:     'Tiro Devanagari Hindi', 'Fraunces', serif;
+
+  --sh-sm: 0 2px 8px rgba(6,8,26,0.5);
+  --sh-md: 0 6px 24px rgba(6,8,26,0.55), 0 2px 6px rgba(6,8,26,0.4);
+  --sh-lg: 0 24px 64px rgba(6,8,26,0.65), 0 8px 16px rgba(6,8,26,0.45);
+  --sh-glow: 0 0 0 1px rgba(212,165,72,0.20), 0 8px 32px rgba(212,165,72,0.18);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+
+  --tint-gold:   rgba(212,165,72,0.04);
+  --tint-navy:   rgba(36,48,102,0.30);
+  --bd-strong:   rgba(212,165,72,0.32);
 }
+
+/* === Light theme — ivory base, deep navy text, same gold accent === */
 [data-theme="light"] {
-  --bg-base:     #f2f0fb;
-  --bg-sidebar:  #eae7f8;
-  --bg-main:     #f8f7fe;
+  --bg-base:     #ede5d0;
+  --bg-sidebar:  #f6f1e7;
+  --bg-main:     #fbf7ec;
   --bg-elv:      #ffffff;
-  --bg-hover:    #e4e0f5;
-  --bg-active:   #d8d2ef;
-  --bd:          #cbc6e8;
-  --bd2:         #b3aed4;
-  --t1:          #19162e;
-  --t2:          #4c4870;
-  --t3:          #8480a5;
-  --t-link:      #7c3aed;
+  --bg-hover:    #ede5d0;
+  --bg-active:   #d9cda8;
+  --bd:          rgba(26,36,86,0.10);
+  --bd2:         rgba(26,36,86,0.18);
+  --t1:          #11183d;
+  --t2:          #5a6188;
+  --t3:          #8a8fae;
+  --t-link:      #8a6818;
+  --primary:     #a98026;
+  --primary-h:   #8a6818;
+  --primary-l:   #c89638;
+  --primary-dim: rgba(169,128,38,0.14);
+  --primary-glow: 0 0 24px rgba(169,128,38,0.20);
+  --primary-orb: rgba(169,128,38,0.05);
+  --ok:          #1a7a56;
+  --warn:        #a8451f;
+  --err:         #a8323e;
+  --sh-sm: 0 2px 8px rgba(26,36,86,0.08);
+  --sh-md: 0 6px 24px rgba(26,36,86,0.12), 0 2px 6px rgba(26,36,86,0.06);
+  --sh-lg: 0 24px 64px rgba(26,36,86,0.18), 0 8px 16px rgba(26,36,86,0.08);
+  --sh-glow: 0 0 0 1px rgba(169,128,38,0.22), 0 6px 24px rgba(169,128,38,0.14);
+  --tint-gold:   rgba(212,165,72,0.06);
+  --tint-navy:   rgba(26,36,86,0.04);
+  --bd-strong:   rgba(26,36,86,0.30);
 }
-[data-accent="rose"]    { --primary:#f43f5e; --primary-h:#e11d48; --primary-l:#fb7185; --primary-dim:rgba(244,63,94,0.16); --t-link:#fb7185; }
-[data-accent="emerald"] { --primary:#10b981; --primary-h:#059669; --primary-l:#34d399; --primary-dim:rgba(16,185,129,0.16); --t-link:#34d399; }
-[data-accent="amber"]   { --primary:#f59e0b; --primary-h:#d97706; --primary-l:#fbbf24; --primary-dim:rgba(245,158,11,0.16); --t-link:#fbbf24; }
-[data-accent="coral"]   { --primary:#f97316; --primary-h:#ea580c; --primary-l:#fb923c; --primary-dim:rgba(249,115,22,0.16); --t-link:#fb923c; }
 
-*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-html,body { height:100%; overflow:hidden; }
-/* Body backdrop — uses the same Narada mandala + radial-gradient design
-   in BOTH dark and light modes so the visual identity is identical across
-   themes. Previously only dark mode looked branded; light mode rendered as
-   a flat ivory page. */
+/* === Accent options — only the brand hue shifts; navy + ivory structure stays === */
+[data-accent="gold"], [data-accent="amber"] {
+  --primary:#d4a548; --primary-h:#c89638; --primary-l:#e2b462;
+  --primary-dim:rgba(212,165,72,0.14); --primary-orb:rgba(212,165,72,0.04); --t-link:#e2b462;
+}
+[data-accent="saffron"], [data-accent="coral"] {
+  --primary:#d97f2e; --primary-h:#b8651f; --primary-l:#e89757;
+  --primary-dim:rgba(217,127,46,0.14); --primary-orb:rgba(217,127,46,0.04); --t-link:#e89757;
+}
+[data-accent="jade"], [data-accent="emerald"] {
+  --primary:#2c8f6f; --primary-h:#206b54; --primary-l:#48a988;
+  --primary-dim:rgba(44,143,111,0.14); --primary-orb:rgba(44,143,111,0.04); --t-link:#48a988;
+}
+[data-accent="indigo"] {
+  --primary:#5d6bd4; --primary-h:#4452b8; --primary-l:#7d89e0;
+  --primary-dim:rgba(93,107,212,0.14); --primary-orb:rgba(93,107,212,0.04); --t-link:#7d89e0;
+}
+[data-accent="rose"] {
+  --primary:#c84268; --primary-h:#a52f53; --primary-l:#dd6989;
+  --primary-dim:rgba(200,66,104,0.14); --primary-orb:rgba(200,66,104,0.04); --t-link:#dd6989;
+}
+
+/* === Base reset (verbatim — unchanged behaviour) === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
 body {
-  font-family:'DM Sans',system-ui,sans-serif;
-  color:var(--t1);
-  -webkit-font-smoothing:antialiased;
-  background-color:var(--bg-base);
-  background-image:
-    radial-gradient(circle at 12% 15%, var(--primary-dim) 0%, transparent 55%),
-    radial-gradient(circle at 88% 85%, var(--primary-dim) 0%, transparent 55%),
-    url('/narada-mandala.svg');
-  background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: top left, bottom right, center;
-  background-size: 60vmin 60vmin, 50vmin 50vmin, min(80vmin, 720px) min(80vmin, 720px);
-  background-attachment: fixed, fixed, fixed;
+  font-family: var(--ff-body);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg-base);
+  font-feature-settings: 'ss01', 'cv11';
 }
-[data-theme="light"] body {
-  /* The mandala asset is dark — lift its opacity in light mode via a
-     blend mode so the same artwork is visible on an ivory background. */
-  background-blend-mode: normal, normal, multiply;
-}
-#root { height:100vh; width:100vw; overflow:hidden; display:flex; }
+#root { height: 100vh; width: 100vw; overflow: hidden; display: flex; }
 
-::-webkit-scrollbar { width:4px; height:4px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:4px; }
-::-webkit-scrollbar-thumb:hover { background:var(--t3); }
-::selection { background:var(--primary-dim); }
-:focus-visible { outline:2px solid var(--primary); outline-offset:2px; border-radius:4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bd-strong); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--t3); }
+::selection { background: var(--primary-dim); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
 
-@keyframes fadeUp   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-@keyframes scaleIn  { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
-@keyframes slideInL { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
-@keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:.45} }
-@keyframes spin     { to{transform:rotate(360deg)} }
-@keyframes dotBounce{ 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} }
-@keyframes ripple   { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(2.4);opacity:0} }
-@keyframes speakPulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
+/* === Keyframes (kept for backwards compat — existing components animate via class names) === */
+@keyframes fadeUp     { from {opacity:0; transform:translateY(8px)} to {opacity:1; transform:translateY(0)} }
+@keyframes scaleIn    { from {opacity:0; transform:scale(.96)} to {opacity:1; transform:scale(1)} }
+@keyframes slideInL   { from {opacity:0; transform:translateX(-10px)} to {opacity:1; transform:translateX(0)} }
+@keyframes pulse      { 0%,100% {opacity:1} 50% {opacity:.45} }
+@keyframes spin       { to {transform: rotate(360deg)} }
+@keyframes dotBounce  { 0%,80%,100% {transform: scale(0)} 40% {transform: scale(1)} }
+@keyframes ripple     { 0% {transform: scale(1); opacity: .7} 100% {transform: scale(2.4); opacity: 0} }
+@keyframes speakPulse { 0%,100% {box-shadow: 0 0 0 0 rgba(58,165,122,.5)} 50% {box-shadow: 0 0 0 8px rgba(58,165,122,0)} }
+@keyframes ringPulse  { 0%,100% {box-shadow: 0 0 0 0 rgba(212,165,72,0.5)} 50% {box-shadow: 0 0 0 12px rgba(212,165,72,0)} }
+@keyframes rotateSlow { to {transform: rotate(360deg)} }
 
-.il-fade-up   { animation:fadeUp .2s ease-out; }
-.il-scale-in  { animation:scaleIn .15s ease-out; }
-.il-slide-l   { animation:slideInL .2s ease-out; }
+.il-fade-up   { animation: fadeUp .25s var(--ease-out); }
+.il-scale-in  { animation: scaleIn .18s var(--ease-out); }
+.il-slide-l   { animation: slideInL .2s var(--ease-out); }
 
-.il-typing-dot { width:6px;height:6px;border-radius:50%;background:var(--t2);display:inline-block; }
-.il-typing-dot:nth-child(1){animation:dotBounce 1.3s -.3s infinite ease-in-out}
-.il-typing-dot:nth-child(2){animation:dotBounce 1.3s -.15s infinite ease-in-out}
-.il-typing-dot:nth-child(3){animation:dotBounce 1.3s 0s infinite ease-in-out}
+.il-typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t2); display: inline-block; }
+.il-typing-dot:nth-child(1) { animation: dotBounce 1.3s -.3s infinite ease-in-out; }
+.il-typing-dot:nth-child(2) { animation: dotBounce 1.3s -.15s infinite ease-in-out; }
+.il-typing-dot:nth-child(3) { animation: dotBounce 1.3s 0s infinite ease-in-out; }
 
-.il-spin { animation:spin .9s linear infinite; }
-.il-pulse-anim { animation:pulse 2s ease-in-out infinite; }
-.il-speak-ring { animation:speakPulse 1.4s ease-in-out infinite; }
-.il-rec-dot { animation:pulse 1.1s ease-in-out infinite; }
+.il-spin       { animation: spin .9s linear infinite; }
+.il-pulse-anim { animation: pulse 2s ease-in-out infinite; }
+.il-speak-ring { animation: speakPulse 1.4s ease-in-out infinite; }
+.il-rec-dot    { animation: pulse 1.1s ease-in-out infinite; }
 
-/* Mandala watermark — used as a faint decorative backdrop on spacious surfaces */
+/* === Mandala — kept compatible with existing .il-mandala usage === */
 .il-mandala {
-  position:absolute;
-  pointer-events:none;
-  background:url('/narada-mandala.svg') no-repeat center/contain;
-  opacity:.05;
+  position: absolute;
+  pointer-events: none;
+  background: url('/narada-mandala.svg') no-repeat center/contain;
+  opacity: 0.045;
+  filter: drop-shadow(0 0 8px var(--primary));
 }
-[data-theme="light"] .il-mandala { opacity:.07; }
+[data-theme="light"] .il-mandala { opacity: 0.05; filter: none; }
 
-/* Shared chat backdrop — applied to the main content column so the same
-   mandala + soft accent glows appear in BOTH dark and light themes. */
+/* === Main chat backdrop — gentle vignette with mandala behind === */
 .il-main-bg {
   background-color: var(--bg-main);
-  background-image:
-    radial-gradient(circle at 14% 12%, var(--primary-dim) 0%, transparent 55%),
-    radial-gradient(circle at 86% 88%, var(--primary-dim) 0%, transparent 55%),
-    url('/narada-mandala.svg');
-  background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: top left, bottom right, center;
-  background-size: 60vmin 60vmin, 50vmin 50vmin, min(70vmin, 640px) min(70vmin, 640px);
-  background-attachment: local, local, local;
+  position: relative;
 }
-[data-theme="light"] .il-main-bg {
-  background-blend-mode: normal, normal, multiply;
+.il-main-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 90% 0%, var(--primary-orb), transparent 50%),
+    radial-gradient(ellipse at 0% 100%, var(--tint-navy), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+.il-main-bg > * { position: relative; z-index: 1; }
+
+/* === Formatting toolbar button — same selector the composer uses === */
+.il-fmt-btn {
+  padding: 3px 6px; border: none; background: transparent; color: var(--t2);
+  border-radius: 4px; cursor: pointer;
+  font-family: var(--ff-body); font-size: 13px;
+  transition: all .12s var(--ease);
+}
+.il-fmt-btn:hover { background: var(--bg-hover); color: var(--t1); }
+.il-fmt-btn.active { background: var(--primary-dim); color: var(--primary); }
+
+/* ────────────────────────────────────────────────────────────────────
+   New utility classes — opt-in. Use these in components you upgrade.
+   The legacy classes above remain so the rest of the app still works.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Display heading helper — for titles, modal headers, profile names */
+.h-display {
+  font-family: var(--ff-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
 }
 
-/* Formatting toolbar button */
-.il-fmt-btn { padding:3px 6px; border:none; background:transparent; color:var(--t2); border-radius:4px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13px; transition:all .12s; }
-.il-fmt-btn:hover { background:var(--bg-hover); color:var(--t1); }
-.il-fmt-btn.active { background:var(--primary-dim); color:var(--primary); }
+/* Veena-string section divider */
+.narada-string {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--primary);
+}
+.narada-string::before, .narada-string::after {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.narada-string > .line { flex: 1; height: 1px; background: currentColor; opacity: 0.5; }
+
+/* Devanagari numeral helper */
+.deva { font-family: var(--ff-deva); }
+
+/* Decorative mandala backdrop (use sparingly on hero surfaces) */
+.narada-mandala-bg {
+  position: absolute;
+  pointer-events: none;
+  background: url('/narada-mandala.svg') no-repeat center/contain;
+  opacity: 0.045;
+  filter: drop-shadow(0 0 8px var(--primary));
+}
+[data-theme="light"] .narada-mandala-bg { opacity: 0.05; filter: none; }
+
+/* Pulse rings used by incoming-call overlay */
+.narada-ring-pulse { animation: ringPulse 1.6s var(--ease) infinite; }
+
+/* Override the loud purple "Outfit" headlines that exist throughout
+   the codebase via inline style. Anywhere the existing code says
+   fontFamily: "'Outfit',sans-serif" we transparently swap to Fraunces
+   for the editorial mood. */
+[style*="Outfit"] { font-family: var(--ff-display) !important; font-weight: 600 !important; letter-spacing: -0.005em !important; }
+[style*="DM Sans"] { font-family: var(--ff-body) !important; }
+[style*="JetBrains Mono"], [style*="Consolas"] { font-family: var(--ff-mono) !important; }
+
+/* === Production polish — buttons, surfaces === */
+button { font-family: inherit; }
+
+/* === Accessibility — high-contrast focus on interactive surfaces === */
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* === Print / PDF safety — never let the app render a black PDF === */
+@media print {
+  body { background: #fff; color: #000; }
+}

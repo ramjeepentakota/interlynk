@@ -121,6 +121,7 @@ com\enterprise\collab\entity\Reaction.class
 com\enterprise\collab\entity\RetentionPolicy$RetentionPolicyBuilder.class
 com\enterprise\collab\dto\AdminTeamsDto$MessagingPolicyResponse$MessagingPolicyResponseBuilder.class
 com\enterprise\collab\dto\ChatDto$PollOptionDto.class
+com\enterprise\collab\dto\AuthDto$MfaLoginRequest.class
 com\enterprise\collab\dto\AdminMgmtDto$PagedUsersResponse$PagedUsersResponseBuilder.class
 com\enterprise\collab\entity\CallQueue.class
 com\enterprise\collab\entity\Team$Visibility.class
@@ -156,7 +157,6 @@ com\enterprise\collab\entity\TeamMember.class
 com\enterprise\collab\repository\InformationBarrierRepository.class
 com\enterprise\collab\dto\AdminTeamsDto$CreatePolicyRequest.class
 com\enterprise\collab\dto\AdminMgmtDto$PagedResponse$PagedResponseBuilder.class
-com\enterprise\collab\config\RateLimitFilter$SimpleRateLimiter.class
 com\enterprise\collab\dto\AdminSecurityDto$UpdateRoleRequest.class
 com\enterprise\collab\dto\AdminMeetingsDto$UpdateVoicemailRequest.class
 com\enterprise\collab\entity\DlpPolicy.class
@@ -169,6 +169,7 @@ com\enterprise\collab\dto\AdminMgmtDto$DepartmentCount.class
 com\enterprise\collab\dto\CodeReviewDto$PullRequestListResponse.class
 com\enterprise\collab\dto\AdminSecurityDto$EDiscoveryResult.class
 com\enterprise\collab\dto\CallDto$CallInviteRequest.class
+com\enterprise\collab\config\RateLimitFilter$Window.class
 com\enterprise\collab\dto\ChatDto$AddTeamToChannelRequest$AddTeamToChannelRequestBuilder.class
 com\enterprise\collab\dto\AdminDto$UserResponse.class
 com\enterprise\collab\service\ChatService.class
@@ -180,6 +181,7 @@ com\enterprise\collab\controller\AdminUserController.class
 com\enterprise\collab\entity\SensitivityLabel$SensitivityLabelBuilder.class
 com\enterprise\collab\dto\ChatDto$VotePollRequest$VotePollRequestBuilder.class
 com\enterprise\collab\dto\AdminMgmtDto$LoginHistoryEntry.class
+com\enterprise\collab\service\SfuService.class
 com\enterprise\collab\dto\ChatDto$UpdateChannelRequest.class
 com\enterprise\collab\dto\CodeReviewDto$ReviewActionRequest$ReviewActionRequestBuilder.class
 com\enterprise\collab\dto\AdminMgmtDto$AdminUserResponse$AdminUserResponseBuilder.class
@@ -273,6 +275,7 @@ com\enterprise\collab\dto\ChatDto$MessageResponse$MessageResponseBuilder.class
 com\enterprise\collab\dto\ScheduledCallDto$CreateRequest$CreateRequestBuilder.class
 com\enterprise\collab\dto\CallDto$CreateDirectCallRequest$CreateDirectCallRequestBuilder.class
 com\enterprise\collab\exception\ForbiddenException.class
+com\enterprise\collab\config\RateLimitFilter$SlidingWindowRateLimiter.class
 com\enterprise\collab\dto\CallDto$CallResponse$CallResponseBuilder.class
 com\enterprise\collab\controller\WorkspaceController.class
 com\enterprise\collab\dto\ChatDto$ReactionDto$ReactionDtoBuilder.class
@@ -397,6 +400,7 @@ com\enterprise\collab\dto\ChatDto$UserDto.class
 com\enterprise\collab\dto\AdminMgmtDto$SimpleResponse$SimpleResponseBuilder.class
 com\enterprise\collab\dto\WorkspaceDto$FileResponse.class
 com\enterprise\collab\dto\AdminMgmtDto$BulkImportRow$BulkImportRowBuilder.class
+com\enterprise\collab\dto\AdminSecurityDto$MfaConfirmRequest.class
 com\enterprise\collab\controller\CallController.class
 com\enterprise\collab\entity\WorkspaceFile$WorkspaceFileBuilder.class
 com\enterprise\collab\dto\AdminMgmtDto$DashboardSummary$DashboardSummaryBuilder.class
@@ -430,6 +434,7 @@ com\enterprise\collab\dto\ChatDto$CreateChannelRequest$CreateChannelRequestBuild
 com\enterprise\collab\dto\ChatDto$ChannelMemberResponse$ChannelMemberResponseBuilder.class
 com\enterprise\collab\dto\AuthDto$RegisterRequest.class
 com\enterprise\collab\dto\CodeReviewDto$CommentResponse.class
+com\enterprise\collab\dto\AuthDto$MfaLoginRequest$MfaLoginRequestBuilder.class
 com\enterprise\collab\entity\User$UserStatus.class
 com\enterprise\collab\service\AdminCallingService.class
 com\enterprise\collab\dto\AdminSecurityDto$CreateBarrierRequest.class
@@ -524,6 +529,7 @@ com\enterprise\collab\controller\DirectMessageController.class
 com\enterprise\collab\dto\AdminDto$TeamListResponse.class
 com\enterprise\collab\dto\AdminDto$UpdateUserRolesRequest.class
 com\enterprise\collab\dto\AdminTeamsDto$UpdateChannelRequest.class
+com\enterprise\collab\controller\SfuTokenController.class
 com\enterprise\collab\dto\AdminMeetingsDto$CallQueueResponse.class
 com\enterprise\collab\dto\AdminMeetingsDto$MeetingPolicyResponse.class
 com\enterprise\collab\entity\Team$TeamBuilder.class
@@ -564,8 +570,10 @@ com\enterprise\collab\dto\NotificationDto$NotificationListResponse$NotificationL
 com\enterprise\collab\service\WorkspaceService.class
 com\enterprise\collab\dto\ScheduledCallDto$InviteeResponse.class
 com\enterprise\collab\entity\Notification$NotificationBuilder.class
+com\enterprise\collab\dto\AdminSecurityDto$MfaConfirmRequest$MfaConfirmRequestBuilder.class
 com\enterprise\collab\dto\AdminDto$SystemSettingResponse.class
 com\enterprise\collab\repository\WorkspaceFileRepository.class
+com\enterprise\collab\security\Totp.class
 com\enterprise\collab\controller\NotificationController.class
 com\enterprise\collab\dto\AdminTeamsDto$AdminChannelResponse$AdminChannelResponseBuilder.class
 com\enterprise\collab\entity\Webhook.class

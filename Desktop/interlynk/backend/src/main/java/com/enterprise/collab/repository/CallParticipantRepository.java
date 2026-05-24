@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface CallParticipantRepository extends JpaRepository<CallParticipant, Long> {
     List<CallParticipant> findByCallRoomId(Long roomId);
     Optional<CallParticipant> findByCallRoomIdAndUserId(Long roomId, Long userId);
+    // Use this variant to avoid IncorrectResultSizeDataAccessException when a user has left-and-rejoined
+    Optional<CallParticipant> findByCallRoomIdAndUserIdAndLeftAtIsNull(Long roomId, Long userId);
     List<CallParticipant> findByCallRoomIdAndLeftAtIsNull(Long roomId);
 
     // Eager-fetch the user to avoid LazyInitializationException when mapping outside a transaction

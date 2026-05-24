@@ -8,9 +8,13 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ScheduledCallRepository extends JpaRepository<ScheduledCall, Long> {
+
+    /** Look up a scheduled call by its shareable meeting code. */
+    Optional<ScheduledCall> findByMeetingCode(String meetingCode);
 
     /** PENDING calls whose start time has passed — ready to go live. */
     @Query("SELECT s FROM ScheduledCall s WHERE s.status = com.enterprise.collab.entity.ScheduledCall$Status.PENDING " +

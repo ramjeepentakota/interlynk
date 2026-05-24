@@ -21,6 +21,9 @@ export interface IncomingCall {
   callerDisplayName: string;
   callerAvatarUrl?: string;
   callType: CallType;
+  /** True when this is an invite into an existing GROUP room (someone added
+   *  you to a call). The callee then joins via the SFU group path. */
+  isGroup?: boolean;
 }
 
 /** An active call session. The roomId doubles as the LiveKit room. */
@@ -56,7 +59,15 @@ export interface AppCtxValue {
   getUser: (id: string) => User;
   registerUsers: (users: (User | undefined)[]) => void;
   searchUsers: (query: string) => Promise<User[]>;
-  login: (username: string, password: string) => Promise<void>;
+  /**
+   * Submit username + password. Resolves to {@code { mfaRequired: true,
+   * mfaChallenge }} when the account has MFA enabled — the caller must then
+   * collect a 6-digit code and call {@link loginMfa}. Resolves to
+   * {@code undefined} when the user is now signed in.
+   */
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<{ mfaRequired: true; mfaChallenge: string } | undefined>;
+  /** Stage 2 of MFA login: redeem the challenge with a TOTP or backup code. */
+  loginMfa: (mfaChallenge: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   authError: string | null;
   /** Mutate the signed-in user locally (e.g. after a profile-pic upload). */
@@ -115,7 +126,10 @@ export interface AppCtxValue {
   closeDm: () => void;
   dmMessages: Record<string, DirectMessageItem[]>;
   dmLoading: boolean;
-  sendDm: (content: string) => Promise<void>;
+  sendDm: (content: string, attachments?: Attachment[]) => Promise<void>;
+  uploadDmAttachment: (file: File | Blob, filename?: string) => Promise<Attachment>;
+  createDmPoll: (question: string, options: string[], allowMultiple: boolean, durationMs?: number) => Promise<void>;
+  votePollInDm: (dmUserId: string, pollId: string, optionIds: string[]) => Promise<void>;
 
   // Profile card
   profileUser: User | null;

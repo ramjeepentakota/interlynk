@@ -142,6 +142,7 @@ function subscribeGlobals() {
           callerDisplayName: n.callerDisplayName,
           callerAvatarUrl: n.callerAvatarUrl,
           callType: n.callType || 'voice',
+          isGroup: Boolean(n.isGroup),
         });
       } catch { /* noop */ }
     })

@@ -21,6 +21,7 @@ import {
   mapMessage,
   mapPoll,
   mapUser,
+  type Attachment,
   type Channel,
   type Conversation,
   type DirectMessageItem,
@@ -96,6 +97,15 @@ export default function InterLynkApp() {
   activeDmRef.current = activeDm;
   const currentUserRef = useRef<User | null>(null);
   currentUserRef.current = currentUser;
+  // Refs for stable access inside intervals/closures.
+  const messagesRef = useRef<Record<string, Message[]>>({});
+  messagesRef.current = messages;
+  const dmMessagesRef = useRef<Record<string, DirectMessageItem[]>>({});
+  dmMessagesRef.current = dmMessages;
+  // Cache of most-recent live presence per userId (survives user registration order).
+  const pendingPresenceRef = useRef<Record<string, string>>({});
+  // Set of poll IDs for which the creator-end notification has already been fired.
+  const firedPollEndsRef = useRef<Set<string>>(new Set());
 
   /* ── Theme attrs ──────────────────────────────────────── */
   useEffect(() => {
@@ -131,8 +141,15 @@ export default function InterLynkApp() {
       let changed = false;
       const next = { ...prev };
       for (const u of users) {
-        if (u && (!next[u.id] || next[u.id].status !== u.status)) {
-          next[u.id] = { ...next[u.id], ...u };
+        if (!u) continue;
+        // Apply any live presence event that arrived before (or after) this user
+        // was loaded from the API — prevents stale DB status from overwriting a
+        // real-time "online" signal.
+        const liveStatus = pendingPresenceRef.current[u.id];
+        const incoming = liveStatus ? { ...u, status: liveStatus as User['status'] } : u;
+        const cur = next[u.id];
+        if (!cur || cur.status !== incoming.status || cur.name !== incoming.name || cur.avatar !== incoming.avatar) {
+          next[u.id] = { ...cur, ...incoming };
           changed = true;
         }
       }
@@ -143,7 +160,7 @@ export default function InterLynkApp() {
   const getUser = useCallback(
     (id: string): User => {
       if (currentUser && id === currentUser.id) return currentUser;
-      return usersById[id] || { id, name: 'Unknown', color: '#8b5cf6', initials: '?' };
+      return usersById[id] || { id, name: 'Unknown', color: '#d4a548', initials: '?' };
     },
     [usersById, currentUser]
   );
@@ -232,11 +249,17 @@ export default function InterLynkApp() {
   }, []);
 
   const sendDm = useCallback(
-    async (content: string) => {
+    async (content: string, attachments?: Attachment[]) => {
       const target = activeDmRef.current;
       const trimmed = content.trim();
-      if (!target || !trimmed) return;
-      const msg = await api.sendDirectMessage(target, trimmed);
+      const hasAttach = attachments && attachments.length > 0;
+      if (!target || (!trimmed && !hasAttach)) return;
+
+      const msgContent = hasAttach
+        ? `__ATTACH__${JSON.stringify({ text: trimmed, attachments })}`
+        : trimmed;
+
+      const msg = await api.sendDirectMessage(target, msgContent);
       setDmMessages((p) => {
         const arr = p[target] || [];
         if (arr.some((m) => m.id === msg.id)) return p;
@@ -245,6 +268,76 @@ export default function InterLynkApp() {
       reloadConversations();
     },
     [reloadConversations]
+  );
+
+  const uploadDmAttachment = useCallback(
+    (file: File | Blob, filename?: string) => api.uploadDmAttachment(file, filename),
+    []
+  );
+
+  const createDmPoll = useCallback(
+    async (question: string, options: string[], allowMultiple: boolean, durationMs?: number) => {
+      const target = activeDmRef.current;
+      if (!target) return;
+      // Build poll entirely client-side — no backend poll endpoint needed for DMs.
+      const pollId = `dm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const expiresAt = durationMs ? new Date(Date.now() + durationMs).toISOString() : undefined;
+      const poll: import('./data').Poll = {
+        id: pollId,
+        messageId: '',
+        question,
+        allowMultiple,
+        closed: false,
+        totalVotes: 0,
+        options: options.map((text, i) => ({ id: `${pollId}-${i}`, text, voteCount: 0, position: i })),
+        votedOptionIds: [],
+        expiresAt,
+      };
+      const msgContent = `__POLL__${JSON.stringify(poll)}`;
+      const msg = await api.sendDirectMessage(target, msgContent);
+      setDmMessages((p) => {
+        const arr = p[target] || [];
+        if (arr.some((m) => m.id === msg.id)) return p;
+        return { ...p, [target]: [...arr, msg] };
+      });
+      reloadConversations();
+    },
+    [reloadConversations]
+  );
+
+  const votePollInDm = useCallback(
+    async (dmUserId: string, pollId: string, optionIds: string[]) => {
+      // Client-side vote — update option vote counts and votedOptionIds in the message.
+      setDmMessages((prev) => {
+        const arr = prev[dmUserId];
+        if (!arr) return prev;
+        const next = arr.map((m) => {
+          if (!m.content.startsWith('__POLL__')) return m;
+          try {
+            const poll: import('./data').Poll = JSON.parse(m.content.slice('__POLL__'.length));
+            if (poll.id !== pollId) return m;
+            const prevVoted = new Set(poll.votedOptionIds);
+            const nextVoted = new Set(optionIds);
+            const updated: import('./data').Poll = {
+              ...poll,
+              votedOptionIds: optionIds,
+              options: poll.options.map((o) => ({
+                ...o,
+                voteCount: o.voteCount
+                  + (nextVoted.has(o.id) && !prevVoted.has(o.id) ? 1 : 0)
+                  - (!nextVoted.has(o.id) && prevVoted.has(o.id) ? 1 : 0),
+              })),
+              totalVotes: poll.totalVotes
+                + optionIds.filter((id) => !prevVoted.has(id)).length
+                - [...prevVoted].filter((id) => !nextVoted.has(id)).length,
+            };
+            return { ...m, content: `__POLL__${JSON.stringify(updated)}` };
+          } catch { return m; }
+        });
+        return { ...prev, [dmUserId]: next };
+      });
+    },
+    []
   );
 
   const openProfile = useCallback((user: User) => setProfileUser(user), []);
@@ -382,7 +475,11 @@ export default function InterLynkApp() {
       setMessages((prev) => {
         const arr = prev[channelId];
         if (!arr) return prev;
-        const next = arr.map((m) => (m.poll && m.poll.id === pollId ? { ...m, poll: updated } : m));
+        const next = arr.map((m) => {
+          if (!m.poll || m.poll.id !== pollId) return m;
+          // Preserve the original expiresAt if the server response omits it.
+          return { ...m, poll: { ...updated, expiresAt: updated.expiresAt ?? m.poll.expiresAt } };
+        });
         return { ...prev, [channelId]: next };
       });
     },
@@ -492,9 +589,9 @@ export default function InterLynkApp() {
           if (!m.poll || m.poll.id !== pollId) return m;
           changed = true;
           // Counts-only broadcast: refresh option totals but preserve THIS user's
-          // own vote selection (the broadcast intentionally omits it).
+          // own vote selection and the original expiry (broadcast omits both).
           const incoming = mapPoll(poll);
-          return { ...m, poll: { ...incoming, votedOptionIds: m.poll.votedOptionIds } };
+          return { ...m, poll: { ...incoming, votedOptionIds: m.poll.votedOptionIds, expiresAt: incoming.expiresAt ?? m.poll.expiresAt } };
         });
         return changed ? { ...prev, [channelId]: next } : prev;
       });
@@ -521,9 +618,12 @@ export default function InterLynkApp() {
     const onPresence = (e: Event) => {
       const { userId, status } = (e as CustomEvent).detail;
       if (!userId) return;
-      setUsersById((prev) =>
-        prev[userId] ? { ...prev, [userId]: { ...prev[userId], status } } : prev
-      );
+      // Always cache so it can be applied when this user is first registered.
+      pendingPresenceRef.current[userId] = status;
+      setUsersById((prev) => {
+        if (!prev[userId] || prev[userId].status === status) return prev;
+        return { ...prev, [userId]: { ...prev[userId], status } };
+      });
     };
     const onIncoming = (e: Event) => {
       const d = (e as CustomEvent).detail;
@@ -601,6 +701,63 @@ export default function InterLynkApp() {
   }, [appendMessage, registerUsers, refreshNotifications, reloadConversations, refreshDmUnread, reloadChannels, selectChannel, currentUser]);
 
   /* ── Session bootstrap ────────────────────────────────── */
+  /* ── Presence: online → away (15 min hidden) → offline (unload) ──
+     Drives the status dot for the current user in real-time. The effect
+     runs once per login (keyed on currentUser.id). */
+  useEffect(() => {
+    if (!currentUser) return;
+    const AWAY_DELAY_MS = 15 * 60 * 1000; // 15 minutes
+    let awayTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const applyPresence = (status: 'online' | 'away' | 'offline') => {
+      api.updatePresence(status.toUpperCase());
+      patchCurrentUser({ status });
+      const meId = currentUserRef.current?.id;
+      if (meId) pendingPresenceRef.current[meId] = status;
+    };
+
+    const goOnline = () => {
+      if (awayTimer) { clearTimeout(awayTimer); awayTimer = null; }
+      applyPresence('online');
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Don't mark away instantly — wait 15 min of background time.
+        awayTimer = setTimeout(() => { applyPresence('away'); awayTimer = null; }, AWAY_DELAY_MS);
+      } else {
+        goOnline();
+      }
+    };
+
+    const onUnload = () => {
+      const token = useAuthStore.getState().token;
+      if (!token) return;
+      // keepalive: true lets the request complete even as the page closes.
+      fetch('/api/chat/presence', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'OFFLINE' }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    // Set initial presence based on whether the tab is currently visible.
+    if (document.visibilityState === 'visible') {
+      applyPresence('online');
+    } else {
+      awayTimer = setTimeout(() => { applyPresence('away'); awayTimer = null; }, AWAY_DELAY_MS);
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('beforeunload', onUnload);
+    return () => {
+      if (awayTimer) clearTimeout(awayTimer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('beforeunload', onUnload);
+    };
+  }, [currentUser?.id, patchCurrentUser]);
+
   const enterApp = useCallback(
     async (user: User) => {
       setCurrentUser(user);
@@ -635,16 +792,41 @@ export default function InterLynkApp() {
   }, []);
 
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (username: string, password: string, rememberMe?: boolean) => {
       setAuthError(null);
       try {
-        const { user } = await api.login(username, password);
-        await enterApp(user);
+        const result = await api.login(username, password, rememberMe);
+        if ('mfaRequired' in result && result.mfaRequired) {
+          // Hand the challenge back to the LoginScreen so it can show the
+          // 6-digit-code form. We don't enter the app until /login/mfa
+          // succeeds.
+          return { mfaRequired: true as const, mfaChallenge: result.mfaChallenge };
+        }
+        await enterApp(result.user);
+        return undefined;
       } catch (e: any) {
         const msg =
           e?.response?.status === 401
             ? 'Invalid username or password.'
             : 'Could not reach the server. Please try again.';
+        setAuthError(msg);
+        throw e;
+      }
+    },
+    [enterApp]
+  );
+
+  const loginMfa = useCallback(
+    async (mfaChallenge: string, code: string) => {
+      setAuthError(null);
+      try {
+        const { user } = await api.loginMfa(mfaChallenge, code);
+        await enterApp(user);
+      } catch (e: any) {
+        const msg = e?.response?.data?.message
+          || (e?.response?.status === 401
+              ? 'Invalid verification code, or the challenge has expired.'
+              : 'Could not reach the server. Please try again.');
         setAuthError(msg);
         throw e;
       }
@@ -693,6 +875,63 @@ export default function InterLynkApp() {
     };
     window.addEventListener('webrtc-signal', handler);
     return () => window.removeEventListener('webrtc-signal', handler);
+  }, []);
+
+  /* ── Global poll-expiry monitor ─────────────────────────
+     Runs every second via a stable interval (uses refs so it never
+     forces re-renders and doesn't recreate on every message update).
+     Fires a toast notification to the poll creator when any of their
+     polls expire — regardless of which screen they currently have open.  */
+  useEffect(() => {
+    const POLL_PREFIX = '__POLL__';
+    const id = setInterval(() => {
+      const meId = currentUserRef.current?.id;
+      if (!meId) return;
+      const now = Date.now();
+
+      // Channel polls
+      Object.values(messagesRef.current).forEach((msgs) => {
+        msgs.forEach((m) => {
+          const poll = m.poll;
+          if (!poll || !poll.expiresAt || m.userId !== meId) return;
+          if (firedPollEndsRef.current.has(poll.id)) return;
+          if (poll.closed || new Date(poll.expiresAt).getTime() <= now) {
+            firedPollEndsRef.current.add(poll.id);
+            window.dispatchEvent(new CustomEvent('il-toast', {
+              detail: {
+                title: 'Your poll ended',
+                message: `"${poll.question}" — ${poll.totalVotes} vote${poll.totalVotes !== 1 ? 's' : ''} received.`,
+                tone: 'info',
+              },
+            }));
+          }
+        });
+      });
+
+      // DM polls (client-side, encoded in message content)
+      Object.values(dmMessagesRef.current).forEach((msgs) => {
+        msgs.forEach((m) => {
+          if (!m.content.startsWith(POLL_PREFIX)) return;
+          try {
+            const poll = JSON.parse(m.content.slice(POLL_PREFIX.length));
+            if (!poll?.id || !poll.expiresAt || m.senderId !== meId) return;
+            if (firedPollEndsRef.current.has(poll.id)) return;
+            if (poll.closed || new Date(poll.expiresAt).getTime() <= now) {
+              firedPollEndsRef.current.add(poll.id);
+              const votes = poll.totalVotes ?? 0;
+              window.dispatchEvent(new CustomEvent('il-toast', {
+                detail: {
+                  title: 'Your poll ended',
+                  message: `"${poll.question}" — ${votes} vote${votes !== 1 ? 's' : ''} received.`,
+                  tone: 'info',
+                },
+              }));
+            }
+          } catch { /* noop */ }
+        });
+      });
+    }, 1000);
+    return () => clearInterval(id);
   }, []);
 
   /* ── Calls (LiveKit-backed media + WS ringing) ────────── */
@@ -760,6 +999,12 @@ export default function InterLynkApp() {
       await api.joinCall(session.roomId);
       setCallSession({ roomId: session.roomId, callType: call.callType, title: call.title });
       setInCall(true);
+      // Ring every invitee into the new group room so they actually join (the
+      // SFU path on accept). Without this the host sat alone in the room.
+      for (const inv of call.invitees) {
+        api.inviteToCall(session.roomId, inv.userId, call.callType)
+          .catch((e) => console.warn('group invite failed for', inv.userId, e));
+      }
     },
     [startDirectCall]
   );
@@ -784,11 +1029,15 @@ export default function InterLynkApp() {
     // via a useEffect, which guarantees the webrtc-signal listener is
     // registered before we tell the caller to send the offer. This removes
     // the previous 50 ms setTimeout race entirely.
+    // Group invite (added to an existing call): join via the multi-party SFU
+    // path — NO targetUserId, so the CallPanel never opens a 1:1 mesh. A normal
+    // 1:1 call keeps the mesh path (targetUserId = the caller).
+    const isGroup = Boolean(incomingCall.isGroup);
     setCallSession({
       roomId: incomingCall.roomId,
       callType: incomingCall.callType,
       title: incomingCall.callerDisplayName || incomingCall.callerUsername,
-      targetUserId: incomingCall.callerUserId,
+      targetUserId: isGroup ? null : incomingCall.callerUserId,
       isInitiator: false,
     });
     setIncomingCall(null);
@@ -814,7 +1063,7 @@ export default function InterLynkApp() {
       theme, setTheme,
       accent, setAccent,
       currentUser, usersById, getUser, registerUsers, searchUsers,
-      login, logout, authError, patchCurrentUser,
+      login, loginMfa, logout, authError, patchCurrentUser,
       activeChannel, selectChannel,
       activeView, setActiveView,
       sideOpen, setSideOpen,
@@ -829,7 +1078,8 @@ export default function InterLynkApp() {
       threadMsg, setThreadMsg,
       typingByChannel, notifyTyping,
       conversations, reloadConversations, dmUnread,
-      activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm,
+      activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm, uploadDmAttachment,
+      createDmPoll, votePollInDm,
       profileUser, openProfile, closeProfile,
       notifications, unreadCount, markAllNotificationsRead,
       inCall, setInCall, callSession,
@@ -840,13 +1090,14 @@ export default function InterLynkApp() {
     }),
     [
       screen, theme, accent, currentUser, usersById, getUser, registerUsers, searchUsers,
-      login, logout, authError, patchCurrentUser, activeChannel, selectChannel, activeView,
+      login, loginMfa, logout, authError, patchCurrentUser, activeChannel, selectChannel, activeView,
       sideOpen, rightOpen, showSettings, showTweaks, showNotif, showAdmin,
       channels, reloadChannels, createChannel,
       messages, messagesLoading, sendMessage, reactToMessage,
       uploadAttachment, createPoll, votePoll, markMessageRead, threadMsg,
       typingByChannel, notifyTyping, conversations, reloadConversations, dmUnread,
-      activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm,
+      activeDm, activeDmUser, openDm, closeDm, dmMessages, dmLoading, sendDm, uploadDmAttachment,
+      createDmPoll, votePollInDm,
       profileUser, openProfile, closeProfile, notifications, unreadCount,
       markAllNotificationsRead,
       inCall, callSession, startChannelCall, startDirectCall, startScheduledCall, joinScheduledCall,

@@ -185,6 +185,18 @@ export function useLiveKit({ url, token, withVideo, enabled }: UseLiveKitOptions
       await room.localParticipant.setScreenShareEnabled(next);
     } catch (e) {
       console.error('Screen share error:', e);
+      const err = e as DOMException & { message?: string };
+      // Don't toast on user-cancel (NotAllowed/Abort). Anything else — including
+      // mobile "NotSupportedError" — is a real failure the user needs to see.
+      if (err?.name !== 'NotAllowedError' && err?.name !== 'AbortError') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('il-toast', { detail: {
+            title: 'Screen share failed',
+            message: err?.message || 'This device/browser cannot share its screen. Try a desktop browser.',
+            tone: 'warn',
+          } }));
+        }
+      }
     }
     snapshot(room);
   }, [snapshot]);

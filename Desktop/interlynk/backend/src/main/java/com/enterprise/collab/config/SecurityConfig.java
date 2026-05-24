@@ -37,6 +37,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
 
+    // BCrypt work factor. Cost 12 is the modern baseline; existing hashes at a
+    // lower cost still verify because BCrypt stores its cost inside each hash.
+    @org.springframework.beans.factory.annotation.Value("${app.security.password.bcrypt-cost:12}")
+    private int bcryptCost;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -140,6 +145,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(4);
+        int cost = (bcryptCost >= 10 && bcryptCost <= 14) ? bcryptCost : 12;
+        return new BCryptPasswordEncoder(cost);
     }
 }

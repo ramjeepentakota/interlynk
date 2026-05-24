@@ -7,9 +7,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Ic, type IconName } from './icons';
 import { Avatar, Input, Tip } from './ui';
 import { useApp, type Accent, type Theme } from './context';
-import { useLiveKit, attachCameraTrack, type LiveKitParticipant } from '@/hooks/useLiveKit';
+import { useSfu, type SfuParticipant } from '@/hooks/useSfu';
 import { useWebRTC } from '@/hooks/useWebRTC';
-import { Track } from 'livekit-client';
 import { colorFor, type User } from './data';
 import * as api from './api';
 import { useAuthStore } from '@/store/useAppStore';
@@ -19,33 +18,104 @@ import { publishCallSignal } from './realtime';
  *  avatars so we can persist the picture in the backend's avatarUrl field
  *  without a separate file-storage endpoint. */
 async function resizeImageToDataUrl(file: File, size: number, quality: number): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
-  const sx = (bitmap.width - side) / 2;
-  const sy = (bitmap.height - side) / 2;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D unavailable');
-  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+
+  // Try the fast ImageBitmap path; fall back to <img> for older Safari.
+  try {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - side) / 2;
+    const sy = (bitmap.height - side) / 2;
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+    bitmap.close();
+  } catch {
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decode failed')); };
+      img.src = url;
+    });
+  }
   return canvas.toDataURL('image/jpeg', quality);
+}
+
+/** Resize to a square JPEG Blob so the image can be uploaded as a binary
+ *  file and stored as a short URL — avoids the backend @Size(max=500) limit
+ *  on the avatarUrl profile field which rejects base64 data URLs. */
+async function resizeImageToBlob(file: File, size: number, quality: number): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D unavailable');
+  try {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - side) / 2;
+    const sy = (bitmap.height - side) / 2;
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+    bitmap.close();
+  } catch {
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decode failed')); };
+      img.src = url;
+    });
+  }
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Canvas toBlob returned null'))),
+      'image/jpeg',
+      quality,
+    );
+  });
 }
 
 /* ── LoginScreen ─────────────────────────────────────────── */
 export function LoginScreen() {
-  const { login, authError, theme, setTheme } = useApp();
+  const { login, loginMfa, authError, theme, setTheme } = useApp();
   const [username, setUsername] = useState('');
   const [pass, setPass] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // MFA challenge state. When non-null the form switches to a code-entry view
+  // and submits to /api/v1/auth/login/mfa instead of /api/v1/auth/login.
+  const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
 
   const handleLogin = async (e?: { preventDefault: () => void }) => {
     e && e.preventDefault();
     if (!username.trim() || !pass) return;
     setLoading(true);
     try {
-      await login(username, pass);
+      const result = await login(username, pass, rememberMe);
+      if (result?.mfaRequired) {
+        setMfaChallenge(result.mfaChallenge);
+        setMfaCode('');
+      }
     } catch {
       /* authError surfaced via context */
     } finally {
@@ -53,113 +123,258 @@ export function LoginScreen() {
     }
   };
 
-  const features: { icon: IconName; color: string; title: string; desc: string }[] = [
-    { icon: 'Msg', color: '#c9a85c', title: 'Rich Messaging', desc: 'Threads, reactions, @mentions' },
-    { icon: 'Video', color: '#2f8f6b', title: 'HD Video & Voice', desc: 'Group calls with screen share' },
-    { icon: 'Zap', color: '#b5546a', title: 'Realtime Sync', desc: 'Live channels powered by WebSocket' },
-  ];
+  const handleMfaSubmit = async (e?: { preventDefault: () => void }) => {
+    e && e.preventDefault();
+    if (!mfaChallenge || mfaCode.trim().length < 6) return;
+    setLoading(true);
+    try {
+      await loginMfa(mfaChallenge, mfaCode.trim());
+    } catch {
+      /* authError surfaced via context */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelMfa = () => {
+    setMfaChallenge(null);
+    setMfaCode('');
+    setPass('');
+  };
 
   return (
-    <div className="il-login" style={{ width: '100vw', height: '100vh', background: 'var(--bg-base)', display: 'flex', overflow: 'hidden' }}>
-      <div className="il-login-left" style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,.25) 0%, transparent 65%)', top: '-15%', left: '-15%' }} />
-          <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 65%)', bottom: '-10%', right: '-10%' }} />
-          <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,115,22,.09) 0%, transparent 65%)', bottom: '30%', left: '10%' }} />
+    <div className="il-login" style={{ width: '100vw', height: '100vh', background: 'var(--bg-base)', display: 'flex', overflow: 'hidden', color: 'var(--t1)' }}>
+
+      {/* ── Left brand panel ──────────────────────────────── */}
+      <div className="il-login-left" style={{ flex: '0 0 56%', position: 'relative', display: 'flex', flexDirection: 'column', padding: 56, overflow: 'hidden', background: 'linear-gradient(135deg, var(--bg-base) 0%, var(--bg-elv) 60%, var(--bg-sidebar) 100%)', borderRight: '1px solid var(--bd)' }}>
+        <div style={{ position: 'absolute', width: 720, height: 720, right: -200, top: -120, background: "url('/narada-mandala.svg') no-repeat center/contain", opacity: 0.10, pointerEvents: 'none', filter: 'drop-shadow(0 0 12px var(--primary))' }} />
+        <div style={{ position: 'absolute', width: 320, height: 320, left: -80, bottom: -60, background: "url('/narada-mandala.svg') no-repeat center/contain", opacity: 0.06, pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
+          <img src="/narada-logo.png" alt="Narada" style={{ height: 42, width: 'auto' }} />
+          <div>
+            <div className="h-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '0.16em', color: 'var(--t1)', lineHeight: 1 }}>NARADA</div>
+            <div style={{ fontSize: 10, color: 'var(--t3)', letterSpacing: '0.32em', textTransform: 'uppercase', marginTop: 4 }}>Connect · Communicate · Inspire</div>
+          </div>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 420, width: '100%' }}>
-          <img
-            src="/narada-logo.png"
-            alt="Narada — Connect · Communicate · Inspire"
-            style={{ width: '100%', maxWidth: 460, height: 'auto', display: 'block', marginBottom: 28 }}
-          />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 560, position: 'relative' }}>
+          <div className="narada-string" style={{ marginBottom: 24, color: 'var(--primary)' }}>
+            <span style={{ fontSize: 11, letterSpacing: '0.32em', textTransform: 'uppercase', fontWeight: 700 }}>The Messenger</span>
+            <div className="line" />
+          </div>
+          <h1 className="h-display" style={{ fontSize: 64, lineHeight: 1.02, fontWeight: 400, letterSpacing: '-0.03em', color: 'var(--t1)', marginBottom: 22 }}>
+            Where teams<br />
+            <em style={{ color: 'var(--primary)', fontStyle: 'italic', fontWeight: 500 }}>truly</em> meet.
+          </h1>
+          <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--t2)', maxWidth: 480, fontWeight: 300 }}>
+            A secure, enterprise-grade workspace for messaging, meetings, and shipping code together — engineered to replace Teams without the noise.
+          </p>
 
-          <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 36, color: 'var(--t1)', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-.5px' }}>
-            Your team,<br />
-            <span style={{ background: 'linear-gradient(135deg,var(--primary),#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>in sync.</span>
-          </h2>
-          <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 40 }}>Chat, voice &amp; video calls, and code collaboration — all in one place.</p>
+          <div style={{ marginTop: 48, display: 'flex', gap: 36, flexWrap: 'wrap' }}>
+            {[['SOC-2', 'Type II'], ['ISO', '27001'], ['Encrypted', 'End-to-end'], ['On-prem', 'Available']].map(([k, v]) => (
+              <div key={k}>
+                <div style={{ fontSize: 10.5, color: 'var(--t3)', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600 }}>{k}</div>
+                <div style={{ fontSize: 13.5, color: 'var(--t1)', fontFamily: 'var(--ff-mono)', marginTop: 2 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {features.map(({ icon, color, title, desc }) => {
-              const IconCmp = Ic[icon];
-              return (
-                <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--r-lg)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}22`, border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <IconCmp s={16} c={color} />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--t3)' }}>{desc}</div>
-                  </div>
-                </div>
-              );
-            })}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', fontSize: 11, color: 'var(--t3)', position: 'relative' }}>
+          <div style={{ fontFamily: 'var(--ff-mono)' }}>v4.2.0 · build {String(Date.now()).slice(-4)}</div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <span style={{ cursor: 'pointer' }}>Privacy</span>
+            <span style={{ cursor: 'pointer' }}>Status</span>
+            <span style={{ cursor: 'pointer' }}>Docs</span>
           </div>
         </div>
       </div>
 
-      <div className="il-login-right" style={{ width: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--bd)', position: 'relative', flexShrink: 0 }}>
+      {/* ── Right form ────────────────────────────────────── */}
+      <div className="il-login-right" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 48, background: 'var(--bg-base)', position: 'relative' }}>
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          style={{ position: 'absolute', top: 20, right: 20, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '6px 11px', cursor: 'pointer', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          style={{ position: 'absolute', top: 20, right: 20, background: 'transparent', border: '1px solid var(--bd2)', borderRadius: 'var(--r)', padding: '6px 11px', cursor: 'pointer', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          aria-label="Toggle theme"
         >
-          {theme === 'dark' ? <Ic.Sun s={13} /> : <Ic.Moon s={13} />} {theme === 'dark' ? 'Light' : 'Dark'}
+          {theme === 'dark' ? <Ic.Sun s={13} /> : <Ic.Moon s={13} />}
+          {theme === 'dark' ? 'Dawn' : 'Dusk'}
         </button>
 
-        <div style={{ width: '100%', maxWidth: 360 }}>
-          <div style={{ marginBottom: 28 }}>
-            <h3 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 24, color: 'var(--t1)', marginBottom: 4 }}>
-              Welcome back
-            </h3>
-            <p style={{ fontSize: 14, color: 'var(--t3)' }}>
-              Sign in to your workspace
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Input label="Email or Username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="you@company.com" icon={<Ic.Mail s={15} />} autoFocus />
-              <Input
-                label="Password"
-                type={showPass ? 'text' : 'password'}
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                placeholder="••••••••••"
-                icon={<Ic.Lock s={15} />}
-                rightIcon={<span onClick={() => setShowPass(!showPass)} style={{ cursor: 'pointer', display: 'flex' }}>{showPass ? <Ic.EyeOff s={15} /> : <Ic.Eye s={15} />}</span>}
-              />
-
-              {authError && (
-                <div style={{ fontSize: 13, color: 'var(--err)', background: 'var(--err-dim)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 'var(--r)', padding: '8px 12px' }}>
-                  {authError}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, color: 'var(--t2)' }}>
-                  <input type="checkbox" style={{ accentColor: 'var(--primary)' }} /> Remember me
-                </label>
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          {mfaChallenge ? (
+            <>
+              <div className="narada-string" style={{ marginBottom: 28, color: 'var(--primary)' }}>
+                <div className="line" />
+                <span style={{ fontSize: 10.5, letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700 }}>Two-Factor</span>
+                <div className="line" />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ width: '100%', height: 44, borderRadius: 'var(--r)', background: 'linear-gradient(135deg,var(--primary) 0%,var(--primary-h) 100%)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: loading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4, boxShadow: '0 4px 20px rgba(139,92,246,.35)', transition: 'opacity .15s', opacity: loading ? 0.75 : 1, fontFamily: "'DM Sans',sans-serif" }}
-              >
-                {loading ? (
-                  <><Ic.Loader s={17} className="il-spin" /> Signing in…</>
-                ) : (
-                  <>Sign In<Ic.ArrR s={16} /></>
-                )}
-              </button>
-            </div>
-          </form>
+              <h3 className="h-display" style={{ fontSize: 32, fontWeight: 500, color: 'var(--t1)', marginBottom: 6, letterSpacing: '-0.02em' }}>Verify it's you.</h3>
+              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 24, lineHeight: 1.55 }}>
+                Open your authenticator app and enter the 6-digit code shown for Narada. You can also paste one of your backup codes.
+              </p>
 
-          <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--t3)', marginTop: 20 }}>
-            By continuing you agree to the <span style={{ color: 'var(--t-link)', cursor: 'pointer' }}>Terms of Service</span>
-          </p>
+              <form onSubmit={handleMfaSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9A-Za-z-]/g, '').slice(0, 16))}
+                    placeholder="123 456"
+                    autoFocus
+                    style={{
+                      width: '100%', padding: '14px 16px',
+                      background: 'var(--bg-elv)', border: '1px solid var(--bd2)',
+                      borderRadius: 'var(--r)', color: 'var(--t1)',
+                      fontFamily: 'var(--ff-mono)',
+                      fontSize: 24, letterSpacing: 6, textAlign: 'center', outline: 'none',
+                    }}
+                  />
+
+                  {authError && (
+                    <div style={{ fontSize: 13, color: 'var(--err)', background: 'var(--err-dim)', border: '1px solid var(--err)', borderRadius: 'var(--r)', padding: '8px 12px' }}>
+                      {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || mfaCode.trim().length < 6}
+                    style={{
+                      width: '100%', height: 46,
+                      borderRadius: 'var(--r)',
+                      background: 'var(--primary)',
+                      border: 'none',
+                      color: '#11183d',
+                      fontSize: 14, fontWeight: 600,
+                      letterSpacing: '0.04em',
+                      cursor: loading ? 'wait' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, marginTop: 6,
+                      boxShadow: 'var(--sh-glow)',
+                      opacity: (loading || mfaCode.trim().length < 6) ? 0.6 : 1,
+                      transition: 'opacity .15s',
+                      fontFamily: 'var(--ff-body)',
+                    }}
+                  >
+                    {loading ? <><Ic.Loader s={17} className="il-spin" /> Verifying…</> : <>Verify &amp; sign in<Ic.ArrR s={16} /></>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={cancelMfa}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--t3)', fontSize: 13, cursor: 'pointer', padding: 6 }}
+                  >
+                    ← Use a different account
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="narada-string" style={{ marginBottom: 28, color: 'var(--primary)' }}>
+                <div className="line" />
+                <span style={{ fontSize: 10.5, letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700 }}>Sign In</span>
+                <div className="line" />
+              </div>
+
+              <h3 className="h-display" style={{ fontSize: 32, fontWeight: 500, color: 'var(--t1)', marginBottom: 6, letterSpacing: '-0.02em' }}>Welcome back.</h3>
+              <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>Sign in to your Narada workspace.</p>
+
+              <form onSubmit={handleLogin}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <Input
+                    label="Email or Username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="you@company.com"
+                    icon={<Ic.Mail s={15} />}
+                    autoFocus
+                  />
+                  <Input
+                    label="Password"
+                    type={showPass ? 'text' : 'password'}
+                    value={pass}
+                    onChange={(e) => setPass(e.target.value)}
+                    placeholder="••••••••••"
+                    icon={<Ic.Lock s={15} />}
+                    rightIcon={
+                      <span onClick={() => setShowPass(!showPass)} style={{ cursor: 'pointer', display: 'flex' }}>
+                        {showPass ? <Ic.EyeOff s={15} /> : <Ic.Eye s={15} />}
+                      </span>
+                    }
+                  />
+
+                  {authError && (
+                    <div style={{ fontSize: 13, color: 'var(--err)', background: 'var(--err-dim)', border: '1px solid var(--err)', borderRadius: 'var(--r)', padding: '8px 12px' }}>
+                      {authError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--t2)' }}>
+                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: 'var(--primary)' }} />
+                      Keep me signed in
+                    </label>
+                    <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Forgot?</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: '100%', height: 46,
+                      borderRadius: 'var(--r)',
+                      background: 'var(--primary)',
+                      border: 'none',
+                      color: '#11183d',
+                      fontSize: 14, fontWeight: 600,
+                      letterSpacing: '0.04em',
+                      cursor: loading ? 'wait' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, marginTop: 6,
+                      boxShadow: 'var(--sh-glow)',
+                      opacity: loading ? 0.75 : 1,
+                      transition: 'opacity .15s',
+                      fontFamily: 'var(--ff-body)',
+                    }}
+                  >
+                    {loading ? (
+                      <><Ic.Loader s={17} className="il-spin" /> Signing in…</>
+                    ) : (
+                      <>Enter Narada<Ic.ArrR s={16} /></>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px', color: 'var(--t3)' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--bd)' }} />
+                <span style={{ fontSize: 10.5, letterSpacing: '0.18em', textTransform: 'uppercase' }}>or continue with</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--bd)' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {['SSO · SAML', 'Microsoft', 'Google'].map(p => (
+                  <button key={p} type="button" style={{
+                    flex: 1, height: 40,
+                    background: 'transparent', border: '1px solid var(--bd2)',
+                    borderRadius: 'var(--r)', color: 'var(--t2)',
+                    fontSize: 12, fontFamily: 'inherit', fontWeight: 500,
+                    cursor: 'pointer',
+                  }}>{p}</button>
+                ))}
+              </div>
+
+              <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--t3)', marginTop: 26 }}>
+                New to Narada? <span style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}>Request access</span>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -169,33 +384,43 @@ export function LoginScreen() {
 /* ── Call Panel (LiveKit SFU) ────────────────────────────── */
 
 /** A single participant's video tile (camera or screen share). */
-function VideoTile({ p, big }: { p: LiveKitParticipant; big?: boolean }) {
+function VideoTile({ p, big }: { p: SfuParticipant; big?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const source = p.screenSharing ? Track.Source.ScreenShare : Track.Source.Camera;
-  const pub = p.participant.getTrackPublication(source);
-  const trackSid = pub?.trackSid;
-  const hasVideo = Boolean(pub?.videoTrack && !pub.isMuted);
+  // Prefer the screen-share stream when present, else the camera stream.
+  const stream = p.screenSharing ? p.screenStream : p.cameraStream;
+  const hasVideo = Boolean(stream);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !hasVideo) return;
-    const detach = attachCameraTrack(p.participant, el, source);
-    return detach;
-    // re-attach when the underlying track (sid) or visibility changes
-  }, [p.participant, source, trackSid, hasVideo]);
+    if (!el || !stream) return;
+    el.srcObject = stream;
+    return () => { try { el.srcObject = null; } catch { /* noop */ } };
+    // re-bind when the underlying stream identity changes
+  }, [stream]);
 
   const avatarUser: Partial<User> = { name: p.name, color: colorFor(p.identity) };
 
   return (
-    <div style={{ position: 'relative', background: '#0d0e18', borderRadius: 'var(--r-xl)', overflow: 'hidden', border: `2px solid ${p.isSpeaking ? 'var(--ok)' : 'rgba(255,255,255,.07)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', minHeight: big ? 0 : 140 }}>
+    <div style={{
+      position: 'relative',
+      background: 'radial-gradient(circle at 30% 30%, var(--bg-elv), var(--bg-base) 70%)',
+      borderRadius: big ? 18 : 14,
+      overflow: 'hidden',
+      border: `${p.isSpeaking ? 2 : 1}px solid ${p.isSpeaking ? 'var(--primary)' : 'var(--bd)'}`,
+      boxShadow: p.isSpeaking ? '0 0 0 4px rgba(212,165,72,0.18)' : 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      width: '100%', height: '100%', minHeight: big ? 0 : 140,
+      transition: 'box-shadow .15s var(--ease), border-color .15s var(--ease)',
+    }}>
       {hasVideo ? (
         <video ref={ref} autoPlay playsInline muted={p.isLocal} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: p.isLocal && !p.screenSharing ? 'scaleX(-1)' : 'none' }} />
       ) : (
         <Avatar user={avatarUser} size={big ? 96 : 56} />
       )}
-      <div style={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,.65)', backdropFilter: 'blur(8px)', borderRadius: 6, padding: '3px 8px', fontSize: 12, color: '#fff', fontWeight: 600 }}>
-        {!p.micEnabled && <Ic.MicOff s={12} c="#f87171" />}
-        {p.name}{p.isLocal ? ' (you)' : ''}
+      <div style={{ position: 'absolute', bottom: big ? 14 : 6, left: big ? 14 : 6, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(6,8,26,0.6)', backdropFilter: 'blur(8px)', borderRadius: 999, padding: big ? '6px 10px' : '3px 8px', fontSize: big ? 12.5 : 11, color: 'var(--t1)', fontWeight: 500 }}>
+        {p.isSpeaking && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)' }} />}
+        {!p.micEnabled && <Ic.MicOff s={12} c="var(--err)" />}
+        <span>{p.name}{p.isLocal ? <span style={{ color: 'var(--primary)' }}> · You</span> : ''}</span>
       </div>
     </div>
   );
@@ -211,7 +436,7 @@ function TileOverlay({ isPinned, onPinToggle, compact }: { isPinned: boolean; on
           position: 'absolute', top: 8, right: 8, zIndex: 6,
           width: compact ? 26 : 30, height: compact ? 26 : 30, borderRadius: '50%',
           border: 'none', cursor: 'pointer',
-          background: isPinned ? 'rgba(139,92,246,.85)' : 'rgba(0,0,0,.55)',
+          background: isPinned ? 'rgba(212,165,72,.9)' : 'rgba(0,0,0,.55)',
           color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
           backdropFilter: 'blur(8px)', transition: 'background .15s',
         }}
@@ -241,11 +466,11 @@ function VoiceAvatar({ name, identity, speaking, muted, isLocal }: { name: strin
 }
 
 export function CallPanel() {
-  const { callSession, endCurrentCall, currentUser } = useApp();
-  // WebRTC-only build: initialise token synchronously so the first render
-  // already has tokenResolved=true. Eliminates the one-render-cycle gap
-  // between mount and preflight/startCall firing.
-  const [token, setToken] = useState<api.LiveKitToken | null>({ configured: false });
+  const { callSession, endCurrentCall, currentUser, searchUsers } = useApp();
+  // Group calls use the self-hosted SFU when configured; 1:1 falls back to mesh
+  // WebRTC. Start as {configured:false} so the first render already has
+  // tokenResolved=true and the WebRTC preflight can fire without waiting.
+  const [token, setToken] = useState<api.SfuToken | null>({ configured: false });
   const [duration, setDuration] = useState(0);
   const callType = callSession?.callType ?? 'voice';
   const title = callSession?.title ?? 'Call';
@@ -264,38 +489,62 @@ export function CallPanel() {
   // for the WebRTC path, or a LiveKit participant identity for the SFU path.
   // null = auto: screen-share takes precedence, then remote camera, then local.
   const [pinnedTile, setPinnedTile] = useState<string | null>(null);
+  // True once this call has been upgraded from a 1:1 mesh call into a group
+  // (SFU) call — either because WE added a person, or we received a
+  // 'call-upgrade' signal from the peer who did. Flips the panel onto the SFU
+  // media path while leaving callSession.targetUserId intact.
+  const [groupUpgrade, setGroupUpgrade] = useState(false);
+  // "Add person" picker state.
+  const [showAddPerson, setShowAddPerson] = useState(false);
+  // Speaker/earpiece output routing. speakerOn=true uses the device's default
+  // (loudspeaker on desktop); off routes to the earpiece/communications device.
+  const [speakerOn, setSpeakerOn] = useState(true);
 
   // Listen for remote call signaling state changes (accepted / rejected / ended).
   useEffect(() => {
     const handler = (e: Event) => {
       const signal = (e as CustomEvent).detail;
       if (!signal) return;
+      // Only react to signals for THIS call's room (multi-call safety).
+      if (signal.roomId != null && roomId != null && Number(signal.roomId) !== Number(roomId)) return;
       if (signal.type === 'call-ended' || signal.type === 'call-rejected') {
         endCurrentCall();
       } else if (signal.type === 'call-accepted') {
         setCalleeAccepted(true);
+      } else if (signal.type === 'call-upgrade') {
+        // The peer added someone and is migrating this 1:1 to a group room.
+        // Switch onto the SFU path so all parties share the same room.
+        setGroupUpgrade(true);
       }
     };
     window.addEventListener('webrtc-signal', handler);
     return () => window.removeEventListener('webrtc-signal', handler);
-  }, [endCurrentCall]);
+  }, [endCurrentCall, roomId]);
 
   useEffect(() => {
     if (roomId == null) return;
-    // PRODUCTION: WebRTC-only build. We deliberately do NOT fetch a LiveKit
-    // token here — that HTTP roundtrip used to gate `preflightLocalMedia()`
-    // AND the caller's `startCall()` trigger, adding 50–500 ms (and a full
-    // network failure surface) to every call connect. Setting the token
-    // synchronously to {configured:false} makes `tokenResolved` true on the
-    // first render so the WebRTC path runs immediately. The `useLiveKit`
-    // hook stays inert because `enabled` evaluates to false without a token.
-    // If/when LiveKit gets re-enabled, restore the fetch behind a flag.
-    setToken({ configured: false });
-  }, [roomId]);
+    // 1:1 direct calls (a specific targetUserId) use the proven mesh WebRTC
+    // path — no token needed, so we resolve synchronously and the WebRTC
+    // preflight fires immediately. GROUP calls (no single target) — AND 1:1
+    // calls that have been upgraded to a group — use the self-hosted SFU:
+    // fetch a join token; if the SFU isn't configured the token comes back
+    // {configured:false} and the panel shows a notice.
+    if (targetUserId != null && !groupUpgrade) {
+      setToken({ configured: false });
+      return;
+    }
+    let cancelled = false;
+    api.fetchSfuToken(roomId, true).then((t) => {
+      if (!cancelled) setToken(t);
+    });
+    return () => { cancelled = true; };
+  }, [roomId, targetUserId, groupUpgrade]);
 
-  const lk = useLiveKit({
+  const lk = useSfu({
     url: token?.url,
     token: token?.token,
+    identity: token?.identity,
+    displayName: currentUser?.name,
     withVideo: callType === 'video',
     enabled: Boolean(token?.configured && token?.token),
   });
@@ -312,6 +561,18 @@ export function CallPanel() {
     isInitiator,
   });
 
+  // When a 1:1 call is upgraded to a group, tear down the mesh peer connection
+  // locally (silent — the peer migrates, it is NOT a hang-up) so the SFU path
+  // becomes the single audio source. The SFU hook re-acquires mic/camera when
+  // it connects; there is a brief (~1s) handoff gap. Runs once per upgrade.
+  const meshTornDownRef = useRef(false);
+  useEffect(() => {
+    if (!groupUpgrade || meshTornDownRef.current) return;
+    if (targetUserId == null) return; // pure group call: no mesh to tear down
+    meshTornDownRef.current = true;
+    webrtc.endCall(true);
+  }, [groupUpgrade, targetUserId, webrtc]);
+
   // Start WebRTC offer when LiveKit is not configured AND we are the initiator
   // AND the callee has actually accepted (otherwise the offer would race the
   // callee's CallPanel mount and the webrtc-signal listener would not catch it).
@@ -319,12 +580,14 @@ export function CallPanel() {
   const lkConfigured = Boolean(token?.configured);
   useEffect(() => {
     if (lkConfigured) return;
+    // Mesh WebRTC is 1:1 only. Group calls (no specific target) go through the
+    // SFU, never the mesh path.
+    if (targetUserId == null) return;
     if (!isInitiator) return;
     if (roomId == null) return;
     if (webrtc.callState !== 'idle') return;
     // For 1-on-1 direct calls, wait for the callee's explicit accept.
-    // For group/voice-channel calls (no specific target user), proceed.
-    if (targetUserId != null && !calleeAccepted) return;
+    if (!calleeAccepted) return;
     webrtc.startCall();
   }, [lkConfigured, isInitiator, webrtc.callState, roomId, targetUserId, calleeAccepted, webrtc]);
 
@@ -356,11 +619,14 @@ export function CallPanel() {
   // — the permission prompt fires as fast as React can commit.
   useEffect(() => {
     if (lkConfigured) return;
+    // Only the mesh (1:1) path captures media here; the SFU hook captures its
+    // own media once connected.
+    if (targetUserId == null) return;
     if (roomId == null) return;
     if (webrtc.localStream) return;
     if (webrtc.callState === 'ended' || webrtc.callState === 'error') return;
     webrtc.preflightLocalMedia();
-  }, [tokenResolved, lkConfigured, roomId, webrtc.localStream, webrtc.callState, webrtc]);
+  }, [tokenResolved, lkConfigured, targetUserId, roomId, webrtc.localStream, webrtc.callState, webrtc]);
 
   // Bind WebRTC media elements. The dependency lists include the visibility
   // flags (camera/screen on, remote video off) so the effect re-runs and binds
@@ -505,6 +771,98 @@ export function CallPanel() {
   }, []);
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  // ── Add person to this call ────────────────────────────────────────────────
+  // Rings the chosen user into THIS room as a group invite. If we're still a
+  // 1:1 mesh call, we also tell the existing peer to migrate to the SFU group
+  // room (call-upgrade signal) and flip ourselves onto the SFU path — so all
+  // three end up in the same room. Already-group calls just ring the new person.
+  const addPersonToCall = useCallback(async (user: User) => {
+    if (roomId == null) return;
+    const me = useAuthStore.getState().user;
+    const isMeshOneToOne = targetUserId != null && !groupUpgrade;
+    try {
+      // Adding a person turns the call into a group call, which needs the SFU.
+      // If we're still a 1:1, verify the SFU is actually available BEFORE we
+      // migrate — otherwise we'd tear down a perfectly good 1:1 for nothing.
+      if (isMeshOneToOne) {
+        const probe = await api.fetchSfuToken(roomId, true);
+        if (!probe.configured) {
+          window.dispatchEvent(new CustomEvent('il-toast', {
+            detail: { title: 'Group calls unavailable', message: 'The group-call server is not reachable right now.', tone: 'warn' },
+          }));
+          setShowAddPerson(false);
+          return;
+        }
+      }
+      await api.inviteToCall(Number(roomId), Number(user.id), callType);
+      if (isMeshOneToOne) {
+        if (me) {
+          publishCallSignal({
+            type: 'call-upgrade',
+            roomId: Number(roomId),
+            senderUserId: Number(me.id),
+            targetUserId: Number(targetUserId),
+            callType,
+          });
+        }
+        setGroupUpgrade(true);
+      }
+      window.dispatchEvent(new CustomEvent('il-toast', {
+        detail: { title: 'Adding to call', message: `Ringing ${user.name}…`, tone: 'info' },
+      }));
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      window.dispatchEvent(new CustomEvent('il-toast', {
+        detail: { title: 'Could not add to call', message: msg || 'Please try again.', tone: 'warn' },
+      }));
+    }
+    setShowAddPerson(false);
+  }, [roomId, targetUserId, groupUpgrade, callType]);
+
+  // ── Speaker / earpiece audio-output routing ────────────────────────────────
+  // setSinkId is the Audio Output Devices API. Unsupported on iOS Safari, so we
+  // only surface the button when it exists. Applied to BOTH the mesh remote
+  // <audio> element and (via the SFU hook) every SFU remote audio element.
+  const speakerSupported = typeof window !== 'undefined'
+    && typeof HTMLMediaElement !== 'undefined'
+    && 'setSinkId' in HTMLMediaElement.prototype;
+  const setSfuOutput = lk.setAudioOutput;
+  const applyAudioOutput = useCallback(async (useSpeaker: boolean) => {
+    if (!speakerSupported) return;
+    let deviceId = '';
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const outs = devices.filter((d) => d.kind === 'audiooutput');
+      const byKw = (kw: string) => outs.find((d) => d.label.toLowerCase().includes(kw));
+      if (useSpeaker) {
+        // Prefer an explicit loudspeaker device (mobile); '' = the browser
+        // default sink, which IS the loudspeaker on desktop.
+        deviceId = byKw('speaker')?.deviceId || '';
+      } else {
+        // Earpiece / handset (mobile) or the OS "communications" device.
+        deviceId = byKw('earpiece')?.deviceId
+          || byKw('handset')?.deviceId
+          || outs.find((d) => d.deviceId === 'communications')?.deviceId
+          || '';
+      }
+    } catch { deviceId = ''; }
+    const el = remoteAudioRef.current as (HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+    if (el && typeof el.setSinkId === 'function') {
+      try { await el.setSinkId(deviceId); } catch { /* unsupported sink */ }
+    }
+    try { await setSfuOutput(deviceId); } catch { /* noop */ }
+  }, [speakerSupported, setSfuOutput]);
+
+  // Apply only when the user actually toggles speaker/earpiece — NOT on mount.
+  // The default (speakerOn=true) is the browser's default sink, so touching
+  // setSinkId on first render would be a needless extra call against the proven
+  // 1:1 remote-audio element. We guard the initial run with a ref.
+  const speakerInitRef = useRef(true);
+  useEffect(() => {
+    if (speakerInitRef.current) { speakerInitRef.current = false; return; }
+    void applyAudioOutput(speakerOn);
+  }, [speakerOn, applyAudioOutput]);
+
   const hangUp = async () => {
     // Notify the other party. For 1-on-1 we already know targetUserId; for
     // group calls (no specific target) we just tear down locally — other
@@ -578,16 +936,27 @@ export function CallPanel() {
       <Tip label={label} pos="top">
         <button
           onClick={onClick}
-          style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', cursor: 'pointer', background: active ? `${color}25` : 'rgba(255,255,255,.1)', color: active ? color : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s', backdropFilter: 'blur(8px)' }}
+          style={{
+            width: 46, height: 46, borderRadius: '50%',
+            border: `1px solid ${active ? color : 'var(--bd)'}`,
+            cursor: 'pointer',
+            background: active ? `${color}22` : 'rgba(17,24,61,0.65)',
+            color: active ? color : 'var(--t1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .15s var(--ease)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: active ? `0 0 0 3px ${color}1f` : 'none',
+          }}
         >
-          <IconCmp s={20} />
+          <IconCmp s={19} />
         </button>
       </Tip>
     );
   };
 
   return (
-    <div className="il-callpanel" style={{ position: 'relative', background: '#09090e', display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <div className="il-callpanel" style={{ position: 'relative', background: 'radial-gradient(ellipse at 50% 120%, var(--bg-elv) 0%, var(--bg-main) 60%, var(--bg-base) 100%)', display: 'flex', flexDirection: 'column', height: '100dvh', width: '100%', overflow: 'hidden', color: 'var(--t1)' }}>
+      <div className="narada-mandala-bg" style={{ width: 900, height: 900, left: -200, top: -200, position: 'absolute', opacity: 0.05, pointerEvents: 'none' }} />
       {/* Hidden sink for remote audio. MUST be unconditionally rendered: the
           previous `useWebRTCMode && ...` gate created a race where the
           callee's `ontrack` fired BEFORE the LiveKit-token fetch resolved
@@ -617,21 +986,23 @@ export function CallPanel() {
             el.volume = 1;
             void el.play().then(() => setAudioBlocked(false)).catch(() => undefined);
           }}
-          style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 50, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', gap: 8 }}
+          style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 50, background: 'var(--primary)', color: '#11183d', border: 'none', borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--sh-glow)', display: 'flex', alignItems: 'center', gap: 8 }}
         >
           🔊 Click to enable call audio
         </button>
       )}
-      <div className="il-callpanel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(255,255,255,.04)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,.08)', flexShrink: 0 }}>
+      <div className="il-callpanel-header" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 22px', background: 'rgba(6,8,26,0.55)', backdropFilter: 'blur(14px)', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isConnected ? 'var(--ok)' : connecting ? 'var(--warn)' : '#6b7280', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: '#fff', fontWeight: 600 }}>{fmt(duration)}</span>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isConnected ? 'var(--ok)' : connecting ? 'var(--warn)' : 'var(--t3)', animation: 'pulse 2s infinite', boxShadow: isConnected ? '0 0 0 0 var(--ok)' : 'none' }} />
+            <span style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{isConnected ? 'Live' : connecting ? 'Connecting' : 'Idle'}</span>
+            <span style={{ fontFamily: 'var(--ff-mono)', fontSize: 13, color: 'var(--t1)', fontWeight: 500, marginLeft: 4 }}>{fmt(duration)}</span>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: callType === 'video' ? 'rgba(139,92,246,.2)' : 'rgba(34,197,94,.2)', color: callType === 'video' ? '#a78bfa' : '#4ade80', border: `1px solid ${callType === 'video' ? 'rgba(139,92,246,.3)' : 'rgba(34,197,94,.3)'}` }}>
-            {callType === 'video' ? '📹 ' : '🎙 '}{title}
-          </span>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>{stateLabel}</span>
+          <div style={{ width: 1, height: 20, background: 'var(--bd)' }} />
+          <div>
+            <div className="h-display" style={{ fontSize: 15, fontWeight: 600, color: 'var(--t1)' }}>{title}</div>
+            <div style={{ fontSize: 11, color: 'var(--t2)', fontFamily: 'var(--ff-mono)' }}>{callType === 'video' ? 'Video' : 'Voice'} · {stateLabel}</div>
+          </div>
           {useWebRTCMode && isConnected && (() => {
             // Heuristics that translate the codec-level audio levels into
             // a plain-English diagnosis the user can act on. audioLevel field
@@ -655,7 +1026,7 @@ export function CallPanel() {
                 title={problem ?? 'Live audio diagnostics. Bars: mic capture / received audio amplitude. kbps: RTP byte rate.'}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
-                  fontSize: 11, fontFamily: "'JetBrains Mono',monospace",
+                  fontSize: 11, fontFamily: 'var(--ff-mono)',
                   color: problem ? '#fca5a5' : 'rgba(255,255,255,.75)',
                   background: problem ? 'rgba(239,68,68,.15)' : 'rgba(255,255,255,.06)',
                   border: `1px solid ${problem ? 'rgba(239,68,68,.4)' : 'rgba(255,255,255,.1)'}`,
@@ -790,7 +1161,7 @@ export function CallPanel() {
                     position: 'absolute', top: 8, right: 8, zIndex: 6,
                     width: compact ? 26 : 30, height: compact ? 26 : 30, borderRadius: '50%',
                     border: 'none', cursor: 'pointer',
-                    background: pinned ? 'rgba(139,92,246,.85)' : 'rgba(0,0,0,.55)',
+                    background: pinned ? 'rgba(212,165,72,.9)' : 'rgba(0,0,0,.55)',
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backdropFilter: 'blur(8px)', transition: 'background .15s',
                   }}
@@ -860,35 +1231,179 @@ export function CallPanel() {
                 />
               )}
             </div>
-            {!webrtc.remoteStream && !isConnected && (
+            {(() => {
+              // Group/SFU: show until at least one OTHER participant is present.
+              // Mesh 1:1: show until the peer connects. Once others join, the
+              // roster grows and this hint disappears.
+              const aloneInGroup = configured && lkParticipants.length <= 1;
+              const meshWaiting = useWebRTCMode && !webrtc.remoteStream && !isConnected;
+              return aloneInGroup || meshWaiting;
+            })() && (
               <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13 }}>Waiting for others to join…</div>
             )}
           </div>
         )}
       </div>
 
-      <div className="il-callpanel-controls" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '16px 20px', background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-        {ctrlBtn(isMicOn ? 'Mute' : 'Unmute', 'MicOff', !isMicOn, '#ef4444', toggleMic)}
-        {callType === 'video' && ctrlBtn(isCamOn ? 'Turn off camera' : 'Turn on camera', 'VideoOff', !isCamOn, '#ef4444', toggleCam)}
-        {ctrlBtn(
-          isScreenOn ? 'Stop sharing' : 'Share screen',
-          'Monitor',
-          isScreenOn,
-          '#8b5cf6',
-          isScreenOn && useWebRTCMode ? stopScreen : toggleScreen
+      {/* Controls row. flexWrap + safe-area bottom padding keep every control
+          (mute / camera / screen / speaker / add / leave) visible and tappable
+          on phones — previously the row could overflow the viewport / sit under
+          the home bar so the icons appeared cut off or missing. */}
+      <div className="il-callpanel-controls" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 8, padding: '18px 20px calc(20px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, rgba(6,8,26,0.95), transparent)', borderTop: '1px solid var(--bd)', flexShrink: 0 }}>
+        {showAddPerson && (
+          <AddPersonPanel
+            searchUsers={searchUsers}
+            excludeId={currentUser?.id}
+            onPick={addPersonToCall}
+            onClose={() => setShowAddPerson(false)}
+          />
         )}
-        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,.12)', margin: '0 4px' }} />
-        <Tip label="Leave" pos="top">
+        {ctrlBtn(isMicOn ? 'Mute' : 'Unmute', 'MicOff', !isMicOn, '#d04354', toggleMic)}
+        {callType === 'video' && ctrlBtn(isCamOn ? 'Turn off camera' : 'Turn on camera', 'VideoOff', !isCamOn, '#d04354', toggleCam)}
+        {(() => {
+          // Screen share is unavailable on most mobile browsers (iOS Safari,
+          // Chrome on Android lack getDisplayMedia, or it errors NotSupported
+          // when invoked). Without explicit feedback the user just sees the
+          // button do nothing. Feature-detect once and either surface a clear
+          // toast on tap, OR (when stopping a share that's already running)
+          // let the stop path run normally.
+          const canShareScreen =
+            typeof navigator !== 'undefined'
+            && !!navigator.mediaDevices
+            && typeof navigator.mediaDevices.getDisplayMedia === 'function';
+          const stopHandler = isScreenOn && useWebRTCMode ? stopScreen : toggleScreen;
+          const onScreenClick = () => {
+            if (!isScreenOn && !canShareScreen) {
+              window.dispatchEvent(new CustomEvent('il-toast', { detail: {
+                title: 'Screen sharing unsupported',
+                message: 'This browser/device cannot share its screen. Try a desktop browser (Chrome, Edge, Firefox) on https://.',
+                tone: 'warn',
+              } }));
+              return;
+            }
+            stopHandler();
+          };
+          return ctrlBtn(
+            isScreenOn ? 'Stop sharing' : (canShareScreen ? 'Share screen' : 'Screen share (desktop only)'),
+            'Monitor',
+            isScreenOn,
+            '#d4a548',
+            onScreenClick,
+          );
+        })()}
+        {speakerSupported && ctrlBtn(
+          speakerOn ? 'Speaker (tap for earpiece)' : 'Earpiece (tap for speaker)',
+          'Volume',
+          speakerOn,
+          '#3aa57a',
+          () => setSpeakerOn((v) => !v)
+        )}
+        {ctrlBtn(
+          showAddPerson ? 'Close' : 'Add person',
+          'UserPlus',
+          showAddPerson,
+          '#d4a548',
+          () => setShowAddPerson((v) => !v)
+        )}
+        <div style={{ width: 1, height: 28, background: 'var(--bd)', margin: '0 6px' }} />
+        <Tip label="Leave call" pos="top">
           <button
             data-hangup
             onClick={hangUp}
-            style={{ width: 52, height: 48, borderRadius: 24, border: 'none', cursor: 'pointer', background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(239,68,68,.45)' }}
+            style={{ height: 44, padding: '0 22px', borderRadius: 999, border: 'none', cursor: 'pointer', background: 'var(--err)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'var(--ff-body)', fontWeight: 600, fontSize: 13, letterSpacing: '0.06em', boxShadow: '0 8px 24px rgba(208,67,84,0.45)' }}
           >
-            <Ic.PhoneOff s={20} />
+            <Ic.PhoneOff s={17} /> Leave
           </button>
         </Tip>
       </div>
     </div>
+  );
+}
+
+/* ── Add-person picker (popover above the call controls) ─────────────────────
+   Search for a teammate and ring them into the current call. Self-contained:
+   manages its own debounced search so the CallPanel stays lean. */
+function AddPersonPanel({
+  searchUsers, excludeId, onPick, onClose,
+}: {
+  searchUsers: (q: string) => Promise<User[]>;
+  excludeId?: string;
+  onPick: (u: User) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (query.trim().length < 1) { setResults([]); return; }
+    let cancelled = false;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const found = await searchUsers(query.trim());
+        if (!cancelled) setResults(found.filter((u) => String(u.id) !== String(excludeId)).slice(0, 6));
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 220);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query, searchUsers, excludeId]);
+
+  return (
+    <>
+      {/* Click-away backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 50, width: 'min(320px, 92vw)', background: '#16162a', border: '1px solid rgba(255,255,255,.12)',
+          borderRadius: 14, boxShadow: '0 20px 60px rgba(0,0,0,.6)', padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontSize: 13, fontWeight: 600 }}>
+          <Ic.UserPlus s={15} /> Add to call
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.6)', display: 'flex', padding: 2 }}>
+            <Ic.X s={15} />
+          </button>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,.4)', display: 'flex' }}><Ic.Search s={14} /></span>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search people…"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px 8px 30px', fontSize: 13, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, color: '#fff', outline: 'none' }}
+          />
+        </div>
+        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {loading && <div style={{ color: 'rgba(255,255,255,.45)', fontSize: 12, padding: '6px 4px' }}>Searching…</div>}
+          {!loading && query.trim().length > 0 && results.length === 0 && (
+            <div style={{ color: 'rgba(255,255,255,.45)', fontSize: 12, padding: '6px 4px' }}>No matches.</div>
+          )}
+          {results.map((u) => (
+            <button
+              key={u.id}
+              onClick={() => onPick(u)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', color: '#fff' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <Avatar user={u} size={26} />
+              <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <span style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</span>
+                {u.username && <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>@{u.username}</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -939,32 +1454,124 @@ export function IncomingCallOverlay() {
     setIncomingCall(null);
   };
 
+  const initials = (caller.name || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
   return (
-    <div className="il-incoming-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', padding: 24, pointerEvents: 'none' }}>
-      <div className="il-scale-in il-incoming-card" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd2)', borderRadius: 'var(--r-xl)', padding: 20, width: 320, boxShadow: '0 20px 60px rgba(0,0,0,.7)', pointerEvents: 'all' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <div style={{ position: 'relative' }}>
-            <Avatar user={caller} size={48} />
-            <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', border: '2px solid var(--ok)', animation: 'ripple 1.5s infinite' }} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{caller.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--t3)' }}>Incoming {incomingCall.callType} call…</div>
+    <div className="il-incoming-wrap" style={{
+      position: 'fixed', inset: 0, zIndex: 9000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'radial-gradient(ellipse at center, var(--bg-elv) 0%, var(--bg-main) 50%, var(--bg-base) 100%)',
+      overflow: 'hidden',
+      color: 'var(--t1)',
+      pointerEvents: 'all',
+    }}>
+      {/* Rotating mandala — centered via top/left + negative margins so
+          transform stays free for the rotation animation. */}
+      <div
+        className="narada-mandala-bg"
+        style={{
+          position: 'absolute',
+          width: 900, height: 900,
+          top: '50%', left: '50%',
+          marginTop: -450, marginLeft: -450,
+          opacity: 0.08,
+          animation: 'rotateSlow 60s linear infinite',
+          transformOrigin: 'center center',
+        }}
+      />
+
+      {/* Concentric gold pulse rings centered on viewport. */}
+      {[1, 2, 3].map((i) => {
+        const size = 240 + i * 120;
+        return (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              marginTop: -size / 2, marginLeft: -size / 2,
+              width: size, height: size,
+              borderRadius: '50%',
+              border: '1px solid var(--primary)',
+              opacity: 0.5 - i * 0.12,
+              animation: `ringPulse ${2 + i * 0.4}s ${i * 0.3}s ease-out infinite`,
+            }}
+          />
+        );
+      })}
+
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, padding: 24, maxWidth: 480 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+          {incomingCall.callType === 'video' ? <Ic.Video s={12} /> : <Ic.Phone s={12} />}
+          Incoming {incomingCall.callType === 'video' ? 'Video' : 'Voice'} Call
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <div className="narada-ring-pulse" style={{
+            width: 132, height: 132, borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--primary-l), var(--primary-h))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#11183d',
+            fontFamily: 'var(--ff-display)', fontWeight: 600, fontSize: 48,
+            boxShadow: '0 0 0 4px var(--bg-base), 0 0 0 6px var(--primary), 0 24px 64px rgba(6,8,26,0.7)',
+          }}>{initials}</div>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <div className="h-display" style={{ fontSize: 32, fontWeight: 500, color: 'var(--t1)', letterSpacing: '-0.01em' }}>{caller.name}</div>
+          <div style={{ fontSize: 13, color: 'var(--t2)', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--ff-mono)', color: 'var(--primary)', letterSpacing: '0.06em' }}>ringing…</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={handleDecline}
-            style={{ flex: 1, height: 40, borderRadius: 'var(--r)', background: 'var(--err-dim)', border: '1px solid rgba(239,68,68,.3)', color: 'var(--err)', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: "'DM Sans',sans-serif" }}
-          >
-            <Ic.PhoneOff s={16} /> Decline
-          </button>
-          <button
-            onClick={() => acceptIncomingCall()}
-            style={{ flex: 1, height: 40, borderRadius: 'var(--r)', background: 'var(--ok-dim)', border: '1px solid rgba(34,197,94,.3)', color: 'var(--ok)', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: "'DM Sans',sans-serif" }}
-          >
-            {incomingCall.callType === 'video' ? <Ic.Video s={16} /> : <Ic.Phone s={16} />} Accept
-          </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginTop: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={handleDecline}
+              style={{
+                width: 70, height: 70, borderRadius: '50%',
+                background: 'var(--err)', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 12px 32px rgba(208,67,84,0.45)',
+                transition: 'transform .15s var(--ease)',
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.94)')}
+              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <Ic.PhoneOff s={22} c="#fff" />
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--t2)', letterSpacing: '0.08em' }}>Decline</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => acceptIncomingCall()}
+              style={{
+                width: 70, height: 70, borderRadius: '50%',
+                background: 'var(--ok)', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 12px 32px rgba(58,165,122,0.45)',
+                transition: 'transform .15s var(--ease)',
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.94)')}
+              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              {incomingCall.callType === 'video' ? <Ic.Video s={22} c="#fff" /> : <Ic.Phone s={22} c="#fff" />}
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--t2)', letterSpacing: '0.08em' }}>
+              Accept {incomingCall.callType === 'video' ? '· Video' : '· Voice'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -1009,7 +1616,7 @@ export function ToastHost() {
             <Ic.Bell s={16} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{t.title}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>{t.title}</div>
             {t.message && <div style={{ fontSize: 12.5, color: 'var(--t2)', marginTop: 2 }}>{t.message}</div>}
           </div>
           <button
@@ -1032,7 +1639,7 @@ export function CallEndBanner() {
   return (
     <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9500, background: isDeclined ? 'rgba(239,68,68,.95)' : 'rgba(15,15,20,.95)', border: `1px solid ${isDeclined ? 'rgba(239,68,68,.5)' : 'rgba(255,255,255,.1)'}`, borderRadius: 'var(--r-xl)', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 40px rgba(0,0,0,.6)', backdropFilter: 'blur(12px)' }} className="il-scale-in">
       {isDeclined ? <Ic.PhoneOff s={18} c="#fff" /> : <Ic.PhoneOff s={18} c="rgba(255,255,255,.7)" />}
-      <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, fontFamily: "'DM Sans',sans-serif" }}>
+      <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, fontFamily: 'var(--ff-body)' }}>
         {isDeclined ? 'Call declined' : 'Call ended'}
       </span>
     </div>
@@ -1074,23 +1681,23 @@ export function SettingsModal() {
     setAvatarStatus('saving');
     setAvatarError('');
     try {
-      // Resize client-side to 256×256 JPEG so the persisted data: URL stays
-      // small (~20-30 KB). The avatar_url column is now TEXT on the backend,
-      // so anything in this size range is well within DB limits.
-      const dataUrl = await resizeImageToDataUrl(file, 256, 0.85);
-      const updated = await api.updateAvatar(dataUrl);
-      patchCurrentUser({ avatar: updated.avatar || dataUrl });
-      // Sync the auth-store cached profile too so other surfaces (rail, DMs)
-      // see the new picture without a hard reload.
+      // Resize to 256×256 JPEG Blob and upload as a binary file so we get
+      // back a short fileUrl. Sending a base64 data URL directly to
+      // PUT /api/v1/auth/profile fails with 400 because the backend has
+      // @Size(max=500) on avatarUrl — data URLs are 50-100KB strings.
+      const blob = await resizeImageToBlob(file, 256, 0.85);
+      const attachment = await api.uploadAttachment('0', blob, `avatar-${Date.now()}.jpg`);
+      const fileUrl = attachment.fileUrl;
+      const updated = await api.updateAvatar(fileUrl);
+      const avatarUrl = updated.avatar || fileUrl;
+      patchCurrentUser({ avatar: avatarUrl });
+      // Sync the auth-store cached profile so other surfaces see the new picture.
       const stored = useAuthStore.getState().user;
-      if (stored) useAuthStore.getState().setUser({ ...stored, avatar: updated.avatar || dataUrl } as any);
+      if (stored) useAuthStore.getState().setUser({ ...stored, avatar: avatarUrl } as any);
       setAvatarStatus('ok');
       setTimeout(() => setAvatarStatus('idle'), 2500);
     } catch (e: any) {
       setAvatarStatus('error');
-      // Show the actual server error when available — most often this is a
-      // 413 Payload Too Large or a DB column-length error, both of which are
-      // actionable for the user.
       const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.message;
       setAvatarError(
@@ -1156,7 +1763,7 @@ export function SettingsModal() {
         </div>
         <div data-settings-body style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{tabs.find((t) => t[0] === activeTab)?.[2]}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>{tabs.find((t) => t[0] === activeTab)?.[2]}</h2>
             <button
               onClick={() => setShowSettings(false)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 6, borderRadius: 6, display: 'flex' }}
@@ -1192,23 +1799,20 @@ export function SettingsModal() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>{me.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>{me.name}</div>
                   <div style={{ fontSize: 13, color: 'var(--t3)' }}>{me.role} · @{me.username}</div>
-                  <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={() => avatarInputRef.current?.click()}
-                      disabled={avatarStatus === 'saving'}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r)', border: '1px solid var(--bd2)', background: 'var(--bg-elv)', color: 'var(--t1)', fontSize: 12.5, fontWeight: 600, cursor: avatarStatus === 'saving' ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif" }}
-                    >
-                      <Ic.Upload s={13} /> {avatarStatus === 'saving' ? 'Uploading…' : 'Upload picture'}
-                    </button>
-                    {avatarStatus === 'ok' && (
-                      <span style={{ fontSize: 12, color: 'var(--ok)' }}>Profile picture updated — everyone will see this.</span>
-                    )}
-                    {avatarStatus === 'error' && (
-                      <span style={{ fontSize: 12, color: 'var(--err)' }}>{avatarError}</span>
-                    )}
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t3)' }}>
+                    Click the camera icon to change your profile picture.
                   </div>
+                  {avatarStatus === 'saving' && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t3)' }}>Uploading…</div>
+                  )}
+                  {avatarStatus === 'ok' && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--ok)' }}>Profile picture updated.</div>
+                  )}
+                  {avatarStatus === 'error' && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--err)' }}>{avatarError}</div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1218,7 +1822,7 @@ export function SettingsModal() {
                     <input
                       defaultValue={v}
                       readOnly
-                      style={{ padding: '9px 12px', background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', fontSize: 14, outline: 'none', fontFamily: "'DM Sans',sans-serif" }}
+                      style={{ padding: '9px 12px', background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', color: 'var(--t1)', fontSize: 14, outline: 'none', fontFamily: 'var(--ff-body)' }}
                     />
                   </div>
                 ))}
@@ -1496,7 +2100,7 @@ function AudioVideoSettings() {
 
   const supportsSinkId = typeof (HTMLAudioElement.prototype as any).setSinkId === 'function';
 
-  const fieldStyle: CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 'var(--r)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', color: 'var(--t1)', fontSize: 13, outline: 'none', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" };
+  const fieldStyle: CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 'var(--r)', border: '1px solid var(--bd)', background: 'var(--bg-hover)', color: 'var(--t1)', fontSize: 13, outline: 'none', cursor: 'pointer', fontFamily: 'var(--ff-body)' };
   const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6, display: 'block' };
 
   return (
@@ -1609,13 +2213,13 @@ const primaryBtnStyle: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px',
   borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
   background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 12.5,
-  fontFamily: "'DM Sans',sans-serif",
+  fontFamily: 'var(--ff-body)',
 };
 const ghostBtnStyle: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px',
   borderRadius: 'var(--r)', border: '1px solid var(--bd2)', cursor: 'pointer',
   background: 'var(--bg-hover)', color: 'var(--t1)', fontWeight: 600, fontSize: 12.5,
-  fontFamily: "'DM Sans',sans-serif",
+  fontFamily: 'var(--ff-body)',
 };
 
 /* ── Tweaks Panel (design tooling only) ──────────────────── */
@@ -1684,7 +2288,7 @@ export function TweaksPanel() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bd)', background: 'transparent' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <Ic.Zap s={14} c="var(--primary)" />
-          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Tweaks</span>
+          <span style={{ fontFamily: 'var(--ff-display)', fontWeight: 700, fontSize: 13, color: 'var(--t1)' }}>Tweaks</span>
         </div>
         <button
           data-no-drag

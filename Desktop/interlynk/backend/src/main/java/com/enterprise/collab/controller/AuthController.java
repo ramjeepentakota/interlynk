@@ -27,6 +27,18 @@ public class AuthController {
     public ResponseEntity<AuthDto.AuthResponse> login(@Valid @RequestBody AuthDto.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+
+    /**
+     * Stage 2 of MFA-protected sign-in. The client submits the
+     * {@code mfaChallenge} returned by {@code /login} together with the
+     * 6-digit code from the user's authenticator (Authy, Google
+     * Authenticator, Microsoft Authenticator, 1Password, Duo …) or one of
+     * their backup recovery codes.
+     */
+    @PostMapping("/login/mfa")
+    public ResponseEntity<AuthDto.AuthResponse> loginMfa(@Valid @RequestBody AuthDto.MfaLoginRequest request) {
+        return ResponseEntity.ok(authService.loginMfa(request));
+    }
     
     @PostMapping("/refresh")
     public ResponseEntity<AuthDto.TokenRefreshResponse> refreshToken(

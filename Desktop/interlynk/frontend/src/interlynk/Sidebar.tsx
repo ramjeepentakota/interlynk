@@ -61,14 +61,36 @@ function ChannelItem({ ch, active, onClick, onDelete, onInvite }: { ch: Channel;
     <div {...hp} style={{ position: 'relative' }}>
       <div
         onClick={onClick}
-        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 8px', borderRadius: 'var(--r)', cursor: 'pointer', background: active ? 'var(--bg-active)' : h ? 'var(--bg-hover)' : 'transparent', color: active ? 'var(--t1)' : unread > 0 ? 'var(--t1)' : 'var(--t3)', transition: 'all .12s', borderLeft: active ? '2px solid var(--primary)' : '2px solid transparent', marginLeft: -2, position: 'relative', userSelect: 'none' }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '5px 10px', borderRadius: 8,
+          cursor: 'pointer',
+          background: active
+            ? 'linear-gradient(90deg, var(--primary-dim), transparent)'
+            : h ? 'var(--bg-hover)' : 'transparent',
+          color: active ? 'var(--t1)' : unread > 0 ? 'var(--t1)' : 'var(--t2)',
+          transition: 'background .14s var(--ease)',
+          position: 'relative', userSelect: 'none',
+          fontWeight: active || unread > 0 ? 600 : 400,
+        }}
       >
-        <div style={{ color: active ? 'var(--primary)' : 'inherit', flexShrink: 0 }}>
-          {ch.type === 'announcement' ? <Ic.Megaphone s={15} /> : ch.locked ? <Ic.Lock s={15} /> : <Ic.Hash s={15} />}
+        {active && <div style={{ position: 'absolute', left: -8, top: 6, bottom: 6, width: 3, borderRadius: 2, background: 'var(--primary)' }} />}
+        <div style={{ color: active ? 'var(--primary)' : 'var(--t3)', flexShrink: 0, display: 'flex' }}>
+          {ch.type === 'announcement' ? <Ic.Megaphone s={13} /> : ch.locked ? <Ic.Lock s={13} /> : <Ic.Hash s={13} />}
         </div>
-        <span style={{ flex: 1, fontSize: 13.5, fontWeight: unread > 0 || active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</span>
-        {unread > 0 && !active && <Badge>{unread > 99 ? '99+' : unread}</Badge>}
-        {h && (
+        <span style={{ flex: 1, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</span>
+        {unread > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            padding: '0 7px',
+            minWidth: 18, height: 16,
+            borderRadius: 10,
+            background: active ? 'var(--primary)' : 'var(--bg-elv)',
+            color: active ? '#11183d' : 'var(--primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>{unread > 99 ? '99+' : unread}</span>
+        )}
+        {h && unread === 0 && (
           <div
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
             style={{ color: 'var(--t3)', display: 'flex', borderRadius: 4, padding: 2 }}
@@ -141,7 +163,7 @@ function InviteChannelModal({ channelId, channelName, onClose, onInvite }: { cha
       <div className="il-scale-in il-modal-card il-invite-modal" style={{ background: 'var(--bg-elv)', border: '1px solid var(--bd)', borderRadius: 'var(--r-xl)', padding: 24, width: 400, boxShadow: '0 24px 80px rgba(0,0,0,.7)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Invite to #{channelName}</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>Invite to #{channelName}</div>
             <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>Search for a teammate to invite</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 4, borderRadius: 4, display: 'flex' }}><Ic.X s={16} /></button>
@@ -151,7 +173,7 @@ function InviteChannelModal({ channelId, channelName, onClose, onInvite }: { cha
           onChange={(e) => { setQuery(e.target.value); doSearch(e.target.value); }}
           placeholder="Search by name or username…"
           autoFocus
-          style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-hover)', border: '1px solid var(--bd2)', borderRadius: 'var(--r)', color: 'var(--t1)', fontSize: 13, outline: 'none', fontFamily: "'DM Sans',sans-serif", boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-hover)', border: '1px solid var(--bd2)', borderRadius: 'var(--r)', color: 'var(--t1)', fontSize: 13, outline: 'none', fontFamily: 'var(--ff-body)', boxSizing: 'border-box' }}
         />
         {status === 'success' && (
           <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--ok-dim)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 'var(--r)', color: 'var(--ok)', fontSize: 13, fontWeight: 600 }}>
@@ -188,29 +210,39 @@ function InviteChannelModal({ channelId, channelName, onClose, onInvite }: { cha
   );
 }
 
+/* Devanagari numerals used as decorative section accents. */
+const DEVA_NUMS = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+
 function SideSection({
   title,
   onAdd,
   addLabel,
+  count,
   children,
   defaultOpen = true,
 }: {
   title: string;
   onAdd?: () => void;
   addLabel?: string;
+  count?: number;
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Pick a stable deva accent from the section title (just for the small numeral)
+  const accent = DEVA_NUMS[title.length % DEVA_NUMS.length];
   return (
-    <div style={{ marginBottom: 4 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', marginBottom: 2 }}>
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px 6px', color: 'var(--t3)' }}>
         <button
           onClick={() => setOpen(!open)}
-          style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', padding: 2, borderRadius: 4 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 0, flex: 1 }}
         >
-          <Ic.ChevD s={12} style={{ transform: open ? 'rotate(0)' : 'rotate(-90deg)', transition: 'transform .18s' }} />
-          {title}
+          <span className="deva" style={{ fontSize: 13, color: 'var(--primary)', minWidth: 14 }}>
+            {count && count > 0 && count < 10 ? DEVA_NUMS[count] : accent}
+          </span>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', flex: 1, textAlign: 'left' }}>{title}</span>
+          <Ic.ChevD s={11} c="var(--t3)" style={{ transform: open ? 'rotate(0)' : 'rotate(-90deg)', transition: 'transform .18s' }} />
         </button>
         {onAdd && (
           <Tip label={addLabel || 'Add'}>
@@ -218,35 +250,38 @@ function SideSection({
               onClick={onAdd}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 2, borderRadius: 4, display: 'flex' }}
             >
-              <Ic.Plus s={14} />
+              <Ic.Plus s={13} />
             </button>
           </Tip>
         )}
       </div>
-      {open && <div className="il-fade-up">{children}</div>}
+      {open && <div className="il-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>{children}</div>}
     </div>
   );
 }
 
 function UserPanel() {
   const { setShowSettings, currentUser } = useApp();
-  const me = currentUser || { name: '?', username: '' };
+  const me = currentUser || { name: '?', username: '', status: 'online' as const };
+  const role = (me as any).role === 'ADMIN' ? 'Admin' : 'Member';
   return (
-    <div style={{ padding: '8px 10px', borderTop: '1px solid var(--bd)', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ padding: '10px 12px', borderTop: '1px solid var(--bd)', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowSettings(true)}>
-        <Avatar user={me} size={34} />
-        <div style={{ position: 'absolute', bottom: -1, right: -1, width: 11, height: 11, borderRadius: '50%', background: 'var(--ok)', border: '2px solid var(--bg-base)' }} />
+        <Avatar user={{ ...me, status: me.status || 'online' }} size={36} showStatus />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Outfit',sans-serif" }}>{me.name}</div>
-        <div style={{ fontSize: 11, color: 'var(--t3)' }}>@{me.username}</div>
+        <div className="h-display" style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{me.name}</div>
+        <div style={{ fontSize: 11, color: 'var(--t3)', display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Online · {role}</span>
+        </div>
       </div>
       <Tip label="Settings" pos="top">
         <button
           onClick={() => setShowSettings(true)}
-          style={{ width: 28, height: 28, border: 'none', background: 'none', color: 'var(--t3)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+          style={{ width: 28, height: 28, border: 'none', background: 'none', color: 'var(--t3)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .12s' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--t3)'; }}
         >
           <Ic.Gear s={15} />
         </button>
@@ -327,13 +362,38 @@ export function Sidebar() {
   };
 
   if (!sideOpen) return null;
+  const workspaceName = 'Narada';
+  const devaTime = (() => {
+    const d = new Date();
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  })();
   return (
     <div className="il-slide-l il-sidebar" style={{ width: 'var(--side-w)', height: '100vh', background: 'var(--bg-sidebar)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--bd)', flexShrink: 0 }}>
-      <div style={{ height: 'var(--topbar-h)', padding: '4px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-        <img src="/narada-logo.png" alt="Narada" style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
+      {/* Workspace header — name + chevron + Devanagari time stamp */}
+      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="/narada-logo.png" alt="Narada" style={{ height: 22, width: 'auto' }} />
+          <span className="h-display" style={{ fontSize: 17, fontWeight: 600, color: 'var(--t1)', letterSpacing: '-0.01em', flex: 1 }}>{workspaceName}</span>
+          <Ic.ChevD s={13} c="var(--t3)" />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--t3)' }}>
+          <span className="deva" style={{ fontSize: 13, color: 'var(--primary)' }}>७</span>
+          <span style={{ letterSpacing: '0.04em' }}>{devaTime} · Connect · Communicate · Inspire</span>
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0' }}>
+      {/* Search Narada */}
+      <div style={{ padding: '10px 10px 4px', flexShrink: 0 }}>
+        <div style={{ background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r)', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--t3)' }}>
+          <Ic.Search s={13} />
+          <span style={{ flex: 1 }}>Search Narada</span>
+          <span style={{ fontFamily: 'var(--ff-mono)', fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-elv)', color: 'var(--t3)' }}>⌘K</span>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px 0' }}>
         {/* Direct messages (inbox) */}
         <SideSection title="Direct Messages">
           <div style={{ padding: '2px 4px 6px' }}>
@@ -387,14 +447,14 @@ export function Sidebar() {
                 onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreate(false); setNewName(''); setCreateError(''); } }}
                 placeholder="channel-name"
                 autoFocus
-                style={{ width: '100%', background: 'var(--bg-active)', border: `1px solid ${createError ? '#f87171' : 'var(--bd2)'}`, borderRadius: 'var(--r)', padding: '6px 9px', color: 'var(--t1)', fontSize: 13, outline: 'none', marginBottom: createError ? 4 : 6, fontFamily: "'DM Sans',sans-serif" }}
+                style={{ width: '100%', background: 'var(--bg-active)', border: `1px solid ${createError ? '#f87171' : 'var(--bd2)'}`, borderRadius: 'var(--r)', padding: '6px 9px', color: 'var(--t1)', fontSize: 13, outline: 'none', marginBottom: createError ? 4 : 6, fontFamily: 'var(--ff-body)' }}
               />
               {createError && (
                 <div style={{ fontSize: 11, color: '#f87171', marginBottom: 6, lineHeight: 1.4 }}>{createError}</div>
               )}
               <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={handleCreate} disabled={creating} style={{ flex: 1, padding: '5px 8px', borderRadius: 'var(--r)', background: 'var(--primary)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>{creating ? 'Creating…' : 'Create'}</button>
-                <button onClick={() => { setShowCreate(false); setNewName(''); setCreateError(''); }} style={{ padding: '5px 8px', borderRadius: 'var(--r)', background: 'transparent', border: '1px solid var(--bd2)', color: 'var(--t2)', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
+                <button onClick={handleCreate} disabled={creating} style={{ flex: 1, padding: '5px 8px', borderRadius: 'var(--r)', background: 'var(--primary)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--ff-body)' }}>{creating ? 'Creating…' : 'Create'}</button>
+                <button onClick={() => { setShowCreate(false); setNewName(''); setCreateError(''); }} style={{ padding: '5px 8px', borderRadius: 'var(--r)', background: 'transparent', border: '1px solid var(--bd2)', color: 'var(--t2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--ff-body)' }}>Cancel</button>
               </div>
             </div>
           )}

@@ -40,7 +40,7 @@ function Stat({ label, value, icon, tone }: { label: string; value: ReactNode; i
         <I s={20} c={tone ? '#fff' : 'var(--primary)'} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', lineHeight: 1.1 }}>{value}</div>
         <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>{label}</div>
       </div>
     </div>
@@ -92,7 +92,7 @@ function DashboardView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 24, overflowY: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Organization Overview</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>Organization Overview</h2>
         <Btn size="sm" variant="outline" onClick={load}><Ic.Loader s={13} /> Refresh</Btn>
       </div>
 
@@ -195,7 +195,7 @@ function UserDrawer({ user, onClose, onChanged }: { user: AdminUser; onClose: ()
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,.5)' }} onClick={onClose}>
       <div className="il-slide-l" onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '92vw', height: '100vh', background: 'var(--bg-base)', borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderBottom: '1px solid var(--bd)' }}>
-          <Avatar user={{ id: String(user.id), name: user.displayName, color: '#8b5cf6' }} size={44} />
+          <Avatar user={{ id: String(user.id), name: user.displayName, color: '#d4a548' }} size={44} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>{user.displayName}</div>
             <div style={{ fontSize: 12, color: 'var(--t3)' }}>@{user.username} · {user.email}</div>
@@ -338,7 +338,7 @@ function UsersView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, overflow: 'hidden', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif", flex: 1 }}>User Management</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)', flex: 1 }}>User Management</h2>
         <Btn size="sm" variant="outline" onClick={inviteGuest}><Ic.Mail s={13} /> Invite guest</Btn>
         <Btn size="sm" variant="outline" onClick={doImport}><Ic.Clip s={13} /> Import CSV</Btn>
         <Btn size="sm" variant="outline" onClick={doExport}><Ic.ArrR s={13} /> Export CSV</Btn>
@@ -377,7 +377,7 @@ function UsersView() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                 <td style={cell}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar user={{ id: String(u.id), name: u.displayName, color: '#8b5cf6' }} size={32} />
+                    <Avatar user={{ id: String(u.id), name: u.displayName, color: '#d4a548' }} size={32} />
                     <div>
                       <div style={{ fontWeight: 600 }}>{u.displayName}{u.guest && <Badge variant="muted" style={{ marginLeft: 6 }}>GUEST</Badge>}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--t3)' }}>@{u.username} · {u.email}</div>
@@ -417,7 +417,7 @@ export function AdminConsole() {
     const active = tab === t;
     return (
       <button key={t} disabled={!enabled} onClick={() => enabled && setTab(t)}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r)', border: 'none', cursor: enabled ? 'pointer' : 'not-allowed', width: '100%', textAlign: 'left', background: active ? 'var(--primary-dim)' : 'transparent', color: active ? 'var(--primary)' : enabled ? 'var(--t2)' : 'var(--t3)', fontSize: 13.5, fontWeight: active ? 600 : 500, fontFamily: "'DM Sans',sans-serif", opacity: enabled ? 1 : 0.5 }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r)', border: 'none', cursor: enabled ? 'pointer' : 'not-allowed', width: '100%', textAlign: 'left', background: active ? 'var(--primary-dim)' : 'transparent', color: active ? 'var(--primary)' : enabled ? 'var(--t2)' : 'var(--t3)', fontSize: 13.5, fontWeight: active ? 600 : 500, fontFamily: 'var(--ff-body)', opacity: enabled ? 1 : 0.5 }}>
         <I s={16} /> {label}
       </button>
     );
@@ -431,7 +431,7 @@ export function AdminConsole() {
             <Ic.Shield s={17} c="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Admin Center</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>Admin Center</div>
             <div style={{ fontSize: 11, color: 'var(--t3)' }}>Narada</div>
           </div>
         </div>

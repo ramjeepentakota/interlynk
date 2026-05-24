@@ -105,9 +105,13 @@ apiClient.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  login: (username: string, password: string) =>
-    apiClient.post('/api/v1/auth/login', { username, password }),
-  
+  login: (username: string, password: string, rememberMe?: boolean) =>
+    apiClient.post('/api/v1/auth/login', { username, password, rememberMe: !!rememberMe }),
+
+  /** Stage 2 of an MFA-protected sign-in: redeem the mfaChallenge + 6-digit code (or backup code). */
+  loginMfa: (mfaChallenge: string, code: string) =>
+    apiClient.post('/api/v1/auth/login/mfa', { mfaChallenge, code }),
+
   register: (email: string, username: string, displayName: string, password: string) =>
     apiClient.post('/api/v1/auth/register', { email, username, displayName, password }),
   
@@ -211,6 +215,12 @@ export const liveKitApi = {
     apiClient.get(`/api/calls/livekit/token?room=${encodeURIComponent(String(room))}&canPublish=${canPublish}`),
 };
 
+// Self-hosted mediasoup SFU join-token API (group calls)
+export const sfuApi = {
+  getToken: (room: string | number, canPublish = true) =>
+    apiClient.get(`/api/calls/sfu/token?room=${encodeURIComponent(String(room))}&canPublish=${canPublish}`),
+};
+
 // Message API
 export const messageApi = {
   getMessages: (channelId: string, page = 0, size = 50) =>
@@ -266,6 +276,11 @@ export const callApi = {
   
   createDirectCall: (userId: number, callType: 'voice' | 'video' = 'voice') =>
     apiClient.post('/api/calls/direct', { userId, callType }),
+
+  // Invite (add) another user into an EXISTING call room. The backend rings
+  // them with a GROUP incoming call so they join via the multi-party SFU path.
+  inviteToCall: (callId: string | number, userId: number, callType: 'voice' | 'video' = 'voice') =>
+    apiClient.post(`/api/calls/room/${callId}/invite`, { userId, callType }),
 };
 
 // Notification API
@@ -420,6 +435,10 @@ export interface ScheduledCall {
   callType: 'voice' | 'video';
   status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   callRoomId: number | null;
+  /** Shareable meeting code, e.g. "abc-defg-hij". */
+  meetingCode?: string | null;
+  /** Shareable relative join URL ("/join/{code}"). */
+  meetingLink?: string | null;
   createdByUserId: number;
   createdByUsername: string;
   createdByDisplayName?: string;
@@ -454,6 +473,21 @@ export const scheduledCallApi = {
   ) => apiClient.put<ScheduledCall>(`/api/scheduled-calls/${id}`, data),
 
   cancel: (id: number | string) => apiClient.delete(`/api/scheduled-calls/${id}`),
+
+  // Join (or launch) the call's single shared room. The backend creates ONE
+  // room on first join and returns it on every subsequent call, so every
+  // participant lands in the SAME room (this is what groups them in the SFU).
+  joinLive: (id: number | string) =>
+    apiClient.post<ScheduledCall>(`/api/scheduled-calls/${id}/join`),
+
+  // Resolve a shareable meeting code to the scheduled call (title/time/status).
+  getByCode: (code: string) =>
+    apiClient.get<ScheduledCall>(`/api/scheduled-calls/by-code/${encodeURIComponent(code)}`),
+
+  // Join via the shareable meeting code. The caller is added as an on-the-fly
+  // invitee if needed, then routed into the same shared room as everyone else.
+  joinByCode: (code: string) =>
+    apiClient.post<ScheduledCall>(`/api/scheduled-calls/by-code/${encodeURIComponent(code)}/join`),
 };
 
 export const webhookAdminApi = {

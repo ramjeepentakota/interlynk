@@ -565,6 +565,9 @@ export interface MfaStatus {
   username: string;
   enabled: boolean;
   required: boolean;
+  /** True when a secret has been generated but the user has not yet confirmed a code. */
+  pendingConfirmation: boolean;
+  backupCodesRemaining: number;
   enrolledAt?: string;
 }
 export interface MfaEnrollResult {
@@ -686,6 +689,21 @@ export const setMfa = (userId: number, data: { enabled?: boolean; required?: boo
   apiClient.put<MfaStatus>(`${BASE}/security/users/${userId}/mfa`, data).then((r) => r.data);
 export const enrollMfa = (userId: number) =>
   apiClient.post<MfaEnrollResult>(`${BASE}/security/users/${userId}/mfa/enroll`).then((r) => r.data);
+export const confirmMfa = (userId: number, code: string) =>
+  apiClient.post<MfaStatus>(`${BASE}/security/users/${userId}/mfa/confirm`, { code }).then((r) => r.data);
+
+/**
+ * Fetch the QR-code PNG as a {@link Blob} via the authenticated axios client
+ * (so the JWT Authorization header is included) and return an object-URL
+ * suitable for binding to {@code <img src>}. Callers must call
+ * {@link URL.revokeObjectURL} on the returned string when the modal closes.
+ */
+export const fetchMfaQrObjectUrl = async (userId: number): Promise<string> => {
+  const res = await apiClient.get(`${BASE}/security/users/${userId}/mfa/qr.png`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(res.data as Blob);
+};
 
 /* RBAC */
 export const listPermissionCatalog = () =>

@@ -30,7 +30,12 @@ public class AuthCompatController {
     public ResponseEntity<AuthDto.AuthResponse> login(@Valid @RequestBody AuthDto.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
-    
+
+    @PostMapping("/login/mfa")
+    public ResponseEntity<AuthDto.AuthResponse> loginMfa(@Valid @RequestBody AuthDto.MfaLoginRequest request) {
+        return ResponseEntity.ok(authService.loginMfa(request));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<AuthDto.TokenRefreshResponse> refreshToken(
             @Valid @RequestBody AuthDto.RefreshTokenRequest request) {

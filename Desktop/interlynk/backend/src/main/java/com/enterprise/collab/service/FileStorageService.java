@@ -57,17 +57,36 @@ public class FileStorageService {
     }
     
     public byte[] readFile(String filePath) throws IOException {
-        Path path = Paths.get(uploadsPath, filePath);
-        return Files.readAllBytes(path);
+        return Files.readAllBytes(resolveWithinUploads(filePath));
     }
-    
+
     public void deleteFile(String filePath) throws IOException {
-        Path path = Paths.get(uploadsPath, filePath);
-        Files.deleteIfExists(path);
+        Files.deleteIfExists(resolveWithinUploads(filePath));
     }
-    
+
     public boolean fileExists(String filePath) {
-        return Files.exists(Paths.get(uploadsPath, filePath));
+        try {
+            return Files.exists(resolveWithinUploads(filePath));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Resolve a caller-supplied relative path against the uploads root and
+     * guarantee the normalized result stays inside it. Defeats path-traversal
+     * (e.g. "../../etc/passwd" or absolute paths) before any filesystem access.
+     */
+    private Path resolveWithinUploads(String filePath) throws IOException {
+        if (filePath == null || filePath.isEmpty()) {
+            throw new IOException("Invalid file path");
+        }
+        Path base = Paths.get(uploadsPath).toAbsolutePath().normalize();
+        Path resolved = base.resolve(filePath).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new IOException("Path escapes storage root: " + filePath);
+        }
+        return resolved;
     }
     
     public String getUploadsPath() {

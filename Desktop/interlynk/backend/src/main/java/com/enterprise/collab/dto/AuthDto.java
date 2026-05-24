@@ -127,6 +127,29 @@ public class AuthDto {
         private String tokenType;
         private Long expiresIn;
         private UserDto user;
+
+        /**
+         * When {@code true}, the password was correct but MFA is enabled on
+         * this account: {@link #accessToken} / {@link #refreshToken} are
+         * absent and the client must POST {@link #mfaChallenge} together with
+         * a 6-digit TOTP code (or backup code) to {@code /api/v1/auth/login/mfa}
+         * to receive real tokens.
+         */
+        private Boolean mfaRequired;
+        private String mfaChallenge;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class MfaLoginRequest {
+        @NotBlank(message = "MFA challenge is required")
+        private String mfaChallenge;
+
+        @NotBlank(message = "Code is required")
+        @Size(min = 6, max = 16, message = "Enter the 6-digit code from your authenticator app or a backup code")
+        private String code;
     }
     
     @Data

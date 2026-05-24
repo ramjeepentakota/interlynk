@@ -123,6 +123,18 @@ public class CallController {
         return ResponseEntity.ok(room);
     }
     
+    @PostMapping("/room/{roomId}/invite")
+    public ResponseEntity<Void> inviteToRoom(
+            @PathVariable Long roomId,
+            @RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
+        Long callerId = getUserIdFromRequest(httpRequest);
+        Long targetUserId = request.get("userId") != null ? ((Number) request.get("userId")).longValue() : null;
+        String callType = request.get("callType") != null ? (String) request.get("callType") : "voice";
+        callService.inviteToRoom(roomId, callerId, targetUserId, callType);
+        return ResponseEntity.ok().build();
+    }
+
     // WebSocket endpoint for call signaling
     @MessageMapping("/call/signal")
     public void handleSignal(@Payload Map<String, Object> signal) {

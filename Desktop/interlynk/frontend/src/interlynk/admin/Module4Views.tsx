@@ -42,7 +42,7 @@ export function SecurityView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ padding: '20px 24px 4px' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: "'Outfit',sans-serif" }}>Security &amp; Compliance</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--t1)', fontFamily: 'var(--ff-display)' }}>Security &amp; Compliance</h2>
         <div style={{ fontSize: 12.5, color: 'var(--t3)' }}>MFA · custom admin roles · conditional access · DLP · sensitivity labels · information barriers · retention · audit · eDiscovery.</div>
       </div>
       <div style={{ display: 'flex', gap: 4, padding: '8px 24px', borderBottom: '1px solid var(--bd)', flexWrap: 'wrap' }}>
@@ -71,52 +71,140 @@ export function SecurityView() {
 }
 
 /* ── MFA ─────────────────────────────────────────────────── */
+interface EnrollState {
+  user: AdminUser;
+  secret: string;
+  otpauthUrl: string;
+  codes: string[];
+}
+
 function MfaTab() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [data, setData] = useState<adm.PagedUsers | null>(null);
   const [loading, setLoading] = useState(true);
-  const [enrolled, setEnrolled] = useState<{ username: string; secret: string; otpauthUrl: string; codes: string[] } | null>(null);
+  const [mfaById, setMfaById] = useState<Record<number, adm.MfaStatus>>({});
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [enrolling, setEnrolling] = useState<EnrollState | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
-    adm.searchUsers({ q, page, size: 25 }).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    adm.searchUsers({ q, page, size: 25 })
+      .then(async (p) => {
+        setData(p);
+        const results = await Promise.all(
+          p.content.map((u) => adm.getMfaStatus(u.id).then((s) => [u.id, s] as const).catch(() => null))
+        );
+        const map: Record<number, adm.MfaStatus> = {};
+        for (const r of results) if (r) map[r[0]] = r[1];
+        setMfaById(map);
+      })
+      .catch(() => { setData(null); setMfaById({}); })
+      .finally(() => setLoading(false));
   }, [q, page]);
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
 
-  const toggle = async (u: AdminUser, key: 'required' | 'enabled', value: boolean) => {
+  const toggleRequired = async (u: AdminUser, value: boolean) => {
+    setBusyId(u.id);
     try {
-      await adm.setMfa(u.id, { [key]: value });
-      load();
-    } catch (e: any) { alert(e?.response?.data?.message || 'Update failed'); }
+      const status = await adm.setMfa(u.id, { required: value });
+      setMfaById((m) => ({ ...m, [u.id]: status }));
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Update failed');
+    } finally {
+      setBusyId(null);
+    }
   };
-  const enroll = async (u: AdminUser) => {
-    const res = await adm.enrollMfa(u.id);
-    setEnrolled({ username: u.username, secret: res.secret, otpauthUrl: res.otpauthUrl, codes: res.backupCodes });
-    load();
+
+  const disable = async (u: AdminUser) => {
+    if (!confirm(`Disable MFA for @${u.username}? Their authenticator will stop being accepted at sign-in.`)) return;
+    setBusyId(u.id);
+    try {
+      const status = await adm.setMfa(u.id, { enabled: false });
+      setMfaById((m) => ({ ...m, [u.id]: status }));
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Could not disable MFA');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const startEnroll = async (u: AdminUser) => {
+    setBusyId(u.id);
+    try {
+      const res = await adm.enrollMfa(u.id);
+      setEnrolling({ user: u, secret: res.secret, otpauthUrl: res.otpauthUrl, codes: res.backupCodes });
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Enrollment failed');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <input style={{ ...input, padding: '9px 12px', fontSize: 13.5 }} placeholder="Search users…" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+      <div style={{ fontSize: 12, color: 'var(--t3)' }}>
+        Compatible with Authy, Google Authenticator, Microsoft Authenticator, 1Password, Duo, FreeOTP, Bitwarden and any other RFC 6238 TOTP app.
+        Enrollment opens a QR code the user scans — they must enter their first 6-digit code to activate MFA.
+      </div>
       <div style={{ ...card, padding: 0 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr><th style={headCell}>User</th><th style={headCell}>MFA enabled</th><th style={headCell}>Required</th><th style={headCell}>Enrolled</th><th style={headCell}></th></tr></thead>
+          <thead><tr>
+            <th style={headCell}>User</th>
+            <th style={headCell}>Status</th>
+            <th style={headCell}>Required</th>
+            <th style={headCell}>Enrolled</th>
+            <th style={headCell}>Backup codes</th>
+            <th style={headCell}></th>
+          </tr></thead>
           <tbody>
-            {loading && <tr><td colSpan={5} style={{ ...cell, color: 'var(--t3)', textAlign: 'center', padding: 30 }}>Loading…</td></tr>}
-            {!loading && data?.content.map((u) => (
-              <tr key={u.id}>
-                <td style={cell}>
-                  <div style={{ fontWeight: 600 }}>{u.displayName}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--t3)' }}>@{u.username}</div>
-                </td>
-                <td style={cell}><input type="checkbox" disabled /></td>
-                <td style={cell}><input type="checkbox" onChange={(e) => toggle(u, 'required', e.target.checked)} /></td>
-                <td style={{ ...cell, color: 'var(--t3)', fontSize: 12 }}>—</td>
-                <td style={cell}><Btn size="sm" variant="outline" onClick={() => enroll(u)}>Enroll</Btn></td>
-              </tr>
-            ))}
+            {loading && <tr><td colSpan={6} style={{ ...cell, color: 'var(--t3)', textAlign: 'center', padding: 30 }}>Loading…</td></tr>}
+            {!loading && data?.content.map((u) => {
+              const m = mfaById[u.id];
+              const isEnrolled = !!m?.enabled;
+              const isPending = !!m?.pendingConfirmation;
+              return (
+                <tr key={u.id}>
+                  <td style={cell}>
+                    <div style={{ fontWeight: 600 }}>{u.displayName}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--t3)' }}>@{u.username}</div>
+                  </td>
+                  <td style={cell}>
+                    {isEnrolled
+                      ? <Badge variant="success">ENABLED</Badge>
+                      : isPending
+                        ? <Badge variant="warning">PENDING</Badge>
+                        : <Badge variant="muted">OFF</Badge>}
+                  </td>
+                  <td style={cell}>
+                    <input type="checkbox"
+                      checked={!!m?.required}
+                      disabled={busyId === u.id}
+                      onChange={(e) => toggleRequired(u, e.target.checked)} />
+                  </td>
+                  <td style={{ ...cell, color: 'var(--t3)', fontSize: 12 }}>
+                    {m?.enrolledAt ? fmtDate(m.enrolledAt) : '—'}
+                  </td>
+                  <td style={{ ...cell, color: 'var(--t2)', fontSize: 12 }}>
+                    {isEnrolled ? `${m?.backupCodesRemaining ?? 0} remaining` : '—'}
+                  </td>
+                  <td style={cell}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Btn size="sm" variant="outline" disabled={busyId === u.id} onClick={() => startEnroll(u)}>
+                        {isEnrolled ? 'Re-enroll' : isPending ? 'Resume enrollment' : 'Enroll'}
+                      </Btn>
+                      {isEnrolled && (
+                        <Btn size="sm" variant="ghost" disabled={busyId === u.id} onClick={() => disable(u)} title="Disable MFA">
+                          <Ic.X s={13} c="var(--err)" />
+                        </Btn>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -128,25 +216,140 @@ function MfaTab() {
         </div>
       )}
 
-      {enrolled && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setEnrolled(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 480, maxWidth: '92vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 18 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>MFA enrolled for @{enrolled.username}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--t3)', marginBottom: 12 }}>Share this secret out-of-band so the user can add it to their authenticator app. Backup codes are one-time.</div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>TOTP secret</label>
-            <input style={{ ...input, marginBottom: 8, fontFamily: 'ui-monospace,monospace' }} value={enrolled.secret} readOnly />
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>otpauth URL</label>
-            <input style={{ ...input, marginBottom: 12, fontFamily: 'ui-monospace,monospace', fontSize: 11 }} value={enrolled.otpauthUrl} readOnly />
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>Backup codes</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 14, fontFamily: 'ui-monospace,monospace', fontSize: 12 }}>
-              {enrolled.codes.map((c) => <div key={c} style={{ padding: 6, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 6 }}>{c}</div>)}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <Btn size="sm" variant="primary" onClick={() => setEnrolled(null)}>Done</Btn>
-            </div>
-          </div>
-        </div>
+      {enrolling && (
+        <MfaEnrollModal
+          state={enrolling}
+          onClose={() => setEnrolling(null)}
+          onConfirmed={async () => {
+            const status = await adm.getMfaStatus(enrolling.user.id).catch(() => null);
+            if (status) setMfaById((m) => ({ ...m, [enrolling.user.id]: status }));
+            setEnrolling(null);
+          }}
+        />
       )}
+    </div>
+  );
+}
+
+/**
+ * Two-step admin enrollment modal:
+ *   1. Show QR code (loaded from /mfa/qr.png) + raw secret as a fallback.
+ *      The admin asks the user to scan it into their authenticator app.
+ *   2. The user reads the 6-digit code back and the admin types it in. Only
+ *      then does the backend mark MFA active. Backup codes are revealed last.
+ */
+function MfaEnrollModal({
+  state, onClose, onConfirmed,
+}: { state: EnrollState; onClose: () => void; onConfirmed: () => void }) {
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [step, setStep] = useState<'scan' | 'verify' | 'done'>('scan');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let current: string | null = null;
+    adm.fetchMfaQrObjectUrl(state.user.id)
+      .then((url) => { if (cancelled) URL.revokeObjectURL(url); else { current = url; setQrUrl(url); } })
+      .catch(() => setErr('Could not render QR code.'));
+    return () => { cancelled = true; if (current) URL.revokeObjectURL(current); };
+  }, [state.user.id]);
+
+  const verify = async () => {
+    const trimmed = code.trim();
+    if (trimmed.length < 6) return;
+    setBusy(true); setErr(null);
+    try {
+      await adm.confirmMfa(state.user.id, trimmed);
+      setStep('done');
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || 'Invalid code. Try the next one your app shows.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 520, maxWidth: '94vw', background: 'var(--bg-base)', border: '1px solid var(--bd)', borderRadius: 'var(--r-lg)', padding: 20 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 6, fontFamily: 'var(--ff-display)' }}>
+          MFA enrollment · @{state.user.username}
+        </div>
+
+        {step === 'scan' && (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--t3)', marginBottom: 14 }}>
+              Ask the user to open their authenticator (Authy, Google Authenticator, Microsoft Authenticator, 1Password, Duo, FreeOTP, Bitwarden…) and scan this QR code.
+              They can also tap "Add manually" and paste the secret below.
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+              <div style={{ width: 200, height: 200, background: '#fff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {qrUrl
+                  ? <img src={qrUrl} alt="MFA QR code" style={{ width: 196, height: 196, display: 'block' }} />
+                  : <span style={{ fontSize: 12, color: '#666' }}>Loading QR…</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>Secret (manual entry)</label>
+                <input style={{ ...input, marginBottom: 10, fontFamily: 'ui-monospace,monospace', wordBreak: 'break-all' }} value={state.secret} readOnly onFocus={(e) => e.currentTarget.select()} />
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase' }}>otpauth URL</label>
+                <input style={{ ...input, fontFamily: 'ui-monospace,monospace', fontSize: 11 }} value={state.otpauthUrl} readOnly onFocus={(e) => e.currentTarget.select()} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Btn size="sm" variant="ghost" onClick={onClose}>Cancel</Btn>
+              <Btn size="sm" variant="primary" onClick={() => setStep('verify')}>I've scanned it — next</Btn>
+            </div>
+          </>
+        )}
+
+        {step === 'verify' && (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--t3)', marginBottom: 14 }}>
+              Enter the 6-digit code currently displayed in the user's authenticator app to prove the secret was added correctly. MFA becomes active only after a successful verification.
+            </div>
+            {err && <div style={{ color: 'var(--err)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
+            <input
+              style={{ ...input, marginBottom: 14, fontFamily: 'ui-monospace,monospace', fontSize: 22, letterSpacing: 6, textAlign: 'center', padding: '12px 10px' }}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              onKeyDown={(e) => { if (e.key === 'Enter') verify(); }}
+              placeholder="123456"
+              inputMode="numeric"
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <Btn size="sm" variant="ghost" onClick={() => setStep('scan')}>← Back</Btn>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn size="sm" variant="ghost" onClick={onClose}>Cancel</Btn>
+                <Btn size="sm" variant="primary" disabled={busy || code.length < 6} onClick={verify}>
+                  {busy ? 'Verifying…' : 'Verify & activate'}
+                </Btn>
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'done' && (
+          <>
+            <div style={{ fontSize: 13.5, color: 'var(--ok)', marginBottom: 12 }}>
+              ✓ MFA is now active. The user will be asked for a code on every sign-in.
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--t3)', marginBottom: 8 }}>
+              Hand these one-time backup codes to the user in a secure channel. They will not be shown again. Each is consumed on use.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 14, fontFamily: 'ui-monospace,monospace', fontSize: 13 }}>
+              {state.codes.map((c) => <div key={c} style={{ padding: 8, background: 'var(--bg-hover)', border: '1px solid var(--bd)', borderRadius: 6, textAlign: 'center' }}>{c}</div>)}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Btn size="sm" variant="outline" onClick={() => {
+                navigator.clipboard?.writeText(state.codes.join('\n')).catch(() => {});
+              }}>Copy codes</Btn>
+              <Btn size="sm" variant="primary" onClick={onConfirmed}>Done</Btn>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 package com.enterprise.collab.service;
 
+import com.enterprise.collab.dto.CallDto;
 import com.enterprise.collab.dto.ScheduledCallDto;
+import com.enterprise.collab.entity.CallRoom;
 import com.enterprise.collab.entity.ScheduledCall;
 import com.enterprise.collab.entity.User;
 import com.enterprise.collab.exception.BadRequestException;
@@ -16,6 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,6 +42,7 @@ public class ScheduledCallService {
     private final ScheduledCallRepository repository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final CallService callService;
 
     // Self-reference so the scheduler thread invokes the per-row methods through
     // the Spring proxy — otherwise @Transactional is bypassed and lazy invitee
@@ -50,6 +54,12 @@ public class ScheduledCallService {
     private static final long MIN_LEAD_SECONDS = 60;
     private static final long REMINDER_LEAD_MINUTES = 5;
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("MMM d, h:mm a");
+
+    /** Alphabet for meeting codes: lowercase a-z + 2-9 minus look-alikes (0/o/1/l/i).
+     *  Keeps codes phone-friendly and hard to mistype. */
+    private static final char[] CODE_ALPHABET =
+            "abcdefghjkmnpqrstuvwxyz23456789".toCharArray();
+    private static final SecureRandom CODE_RNG = new SecureRandom();
 
     // ============ Commands ============
 
@@ -75,6 +85,7 @@ public class ScheduledCallService {
                 .createdBy(creator)
                 .invitees(resolveInvitees(req.getInviteeIds(), creator.getId()))
                 .status(ScheduledCall.Status.PENDING)
+                .meetingCode(generateUniqueMeetingCode())
                 .build();
 
         sc = repository.save(sc);
@@ -131,6 +142,152 @@ public class ScheduledCallService {
         repository.save(sc);
         notifyCancelled(sc);
         log.info("Scheduled call {} cancelled by {}", id, username);
+    }
+
+    /**
+     * Join (or launch) a scheduled call's live room. THIS is what fixes the bug
+     * where every participant landed in a separate room and sat at "waiting for
+     * others to join": the FIRST caller atomically creates ONE shared CallRoom
+     * and stores its id on the ScheduledCall; everyone after reuses that same
+     * callRoomId, so the SFU groups them into the same media session.
+     *
+     * Idempotent and safe to call by the host or any invitee, for a PENDING or
+     * ACTIVE call. The per-id lock prevents two simultaneous joiners racing to
+     * create two rooms on a single backend instance.
+     */
+    public ScheduledCallDto.Response joinLive(Long id, String username) {
+        // Serialize the whole read-modify-write+commit per scheduled-call id so
+        // concurrent joiners converge on ONE room. The lock is held in this
+        // NON-transactional outer method and wraps the transactional inner call
+        // via the `self` proxy — so a second joiner's transaction only starts
+        // AFTER the first has fully committed and therefore reads the room id
+        // the first one created (avoids InnoDB repeatable-read seeing null).
+        // String#intern gives a stable JVM-wide monitor for the id.
+        synchronized (("scheduled-call-join-" + id).intern()) {
+            return self.joinLiveTx(id, username);
+        }
+    }
+
+    @Transactional
+    public ScheduledCallDto.Response joinLiveTx(Long id, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        ScheduledCall sc = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ScheduledCall", "id", id));
+
+        // Anyone who joins by code is treated as an invitee on the fly. The
+        // host-or-invitee gate remains for joins made through the UI list
+        // (which always carries a backend-authenticated user).
+        boolean isHost = sc.getCreatedBy().getId().equals(user.getId());
+        boolean isInvitee = sc.getInvitees().stream().anyMatch(u -> u.getId().equals(user.getId()));
+        if (!isHost && !isInvitee && !user.hasRole("ADMIN")) {
+            throw new ForbiddenException("Only the host or an invitee can join this call");
+        }
+        if (sc.getStatus() == ScheduledCall.Status.COMPLETED
+                || sc.getStatus() == ScheduledCall.Status.CANCELLED) {
+            throw new BadRequestException("This call has ended");
+        }
+
+        // Create the single shared room on first join, owned by the host so its
+        // lifetime tracks the meeting rather than whoever joined first.
+        if (sc.getCallRoomId() == null) {
+            CallDto.CallRoomResponse room = callService.createCallRoom(
+                    sc.getTitle(), CallRoom.CallRoomType.GROUP, sc.getCreatedBy().getId());
+            sc.setCallRoomId(room.getId());
+            log.info("Scheduled call {} opened shared room {}", sc.getId(), room.getId());
+        }
+        // Backfill a meeting code for rows scheduled before the feature shipped,
+        // so the same shareable-link UX works for existing meetings without a
+        // separate migration step.
+        if (sc.getMeetingCode() == null || sc.getMeetingCode().isBlank()) {
+            sc.setMeetingCode(generateUniqueMeetingCode());
+        }
+        // A join always implies the call is live now (covers early "warm-up"
+        // joins on a PENDING call) so other invitees see it as joinable.
+        if (sc.getStatus() == ScheduledCall.Status.PENDING) {
+            sc.setStatus(ScheduledCall.Status.ACTIVE);
+        }
+        sc = repository.save(sc);
+
+        // Register the caller as a participant so the SFU token endpoint
+        // authorizes them for this room.
+        callService.addParticipant(sc.getCallRoomId(), user.getId());
+
+        return toResponse(sc);
+    }
+
+    /**
+     * Look up a scheduled call by its shareable meeting code. Public-by-code
+     * means: anyone signed in who knows the code can see the call's title and
+     * (when joining) be admitted to the room. This is the same trust model as
+     * a Google Meet / Zoom join link.
+     */
+    @Transactional(readOnly = true)
+    public ScheduledCallDto.Response getByCode(String code) {
+        ScheduledCall sc = requireByCode(code);
+        return toResponse(sc);
+    }
+
+    /**
+     * Join a scheduled call by its meeting code. Anyone signed in who has the
+     * code may join — they are added as an invitee if they were not on the
+     * original list, so the host-or-invitee check in {@link #joinLiveTx}
+     * subsequently passes.
+     */
+    public ScheduledCallDto.Response joinLiveByCode(String code, String username) {
+        ScheduledCall sc = requireByCode(code);
+        // Add the caller as an invitee on the fly if they are not yet one.
+        // Done in a tiny dedicated transaction so the join lock in joinLive()
+        // serialises room creation regardless of whether the caller was on the
+        // original list.
+        self.addInviteeIfMissing(sc.getId(), username);
+        return joinLive(sc.getId(), username);
+    }
+
+    @Transactional
+    public void addInviteeIfMissing(Long scheduledCallId, String username) {
+        ScheduledCall sc = repository.findById(scheduledCallId).orElse(null);
+        if (sc == null) return;
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) return;
+        if (sc.getCreatedBy().getId().equals(user.getId())) return;
+        boolean already = sc.getInvitees().stream().anyMatch(u -> u.getId().equals(user.getId()));
+        if (already) return;
+        sc.getInvitees().add(user);
+        repository.save(sc);
+        log.info("User {} added as on-the-fly invitee to scheduled call {} via meeting code",
+                username, scheduledCallId);
+    }
+
+    private ScheduledCall requireByCode(String code) {
+        if (code == null) throw new BadRequestException("meeting code is required");
+        String normalised = code.trim().toLowerCase();
+        if (normalised.isEmpty()) throw new BadRequestException("meeting code is required");
+        return repository.findByMeetingCode(normalised)
+                .orElseThrow(() -> new ResourceNotFoundException("ScheduledCall", "meetingCode", normalised));
+    }
+
+    /** Build a fresh, collision-free meeting code. Format: "xxx-xxxx-xxx" — 10
+     *  characters from a 31-symbol alphabet (~10^15 codes), which is well
+     *  beyond what's practical to brute-force given the lookup is authenticated. */
+    private String generateUniqueMeetingCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String code = randomMeetingCode();
+            if (repository.findByMeetingCode(code).isEmpty()) {
+                return code;
+            }
+        }
+        // Astronomically unlikely; surface as a 500 so we know if it ever fires.
+        throw new IllegalStateException("Could not generate a unique meeting code");
+    }
+
+    private static String randomMeetingCode() {
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 10; i++) {
+            if (i == 3 || i == 7) sb.append('-');
+            sb.append(CODE_ALPHABET[CODE_RNG.nextInt(CODE_ALPHABET.length)]);
+        }
+        return sb.toString();
     }
 
     // ============ Queries ============
@@ -318,6 +475,9 @@ public class ScheduledCallService {
                         .build())
                 .collect(Collectors.toList());
 
+        String meetingCode = sc.getMeetingCode();
+        String meetingLink = meetingCode != null ? "/join/" + meetingCode : null;
+
         return ScheduledCallDto.Response.builder()
                 .id(sc.getId())
                 .title(sc.getTitle())
@@ -326,6 +486,8 @@ public class ScheduledCallService {
                 .callType(sc.getCallType())
                 .status(sc.getStatus().name())
                 .callRoomId(sc.getCallRoomId())
+                .meetingCode(meetingCode)
+                .meetingLink(meetingLink)
                 .createdByUserId(sc.getCreatedBy().getId())
                 .createdByUsername(sc.getCreatedBy().getUsername())
                 .createdByDisplayName(displayName(sc.getCreatedBy()))

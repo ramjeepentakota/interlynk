@@ -24,6 +24,24 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Shareable meeting-link capture.
+ *
+ * Scheduled calls expose a URL like {@code /join/abc-defg-hij}. Visiting that
+ * URL lands on the SPA, so we grab the code BEFORE React mounts, stash it in
+ * sessionStorage (survives the login redirect for signed-out users) and
+ * rewrite history so refresh doesn't re-trigger it. The ScheduledCalls modal
+ * picks the code up on mount and joins automatically.
+ */
+(() => {
+  try {
+    const m = window.location.pathname.match(/^\/join\/([A-Za-z0-9-]+)\/?$/);
+    if (!m) return;
+    sessionStorage.setItem('il-pending-join-code', m[1].toLowerCase());
+    window.history.replaceState(null, '', '/');
+  } catch { /* sessionStorage unavailable — best-effort */ }
+})();
+
 // Register the PWA service worker (offline-shell). Skipped in dev because Vite's
 // HMR doesn't play nicely with a cached fetch handler.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

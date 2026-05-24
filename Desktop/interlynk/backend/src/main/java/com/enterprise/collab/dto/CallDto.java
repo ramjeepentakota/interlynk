@@ -148,6 +148,15 @@ public class CallDto {
         private String callerDisplayName;
         private String callerAvatarUrl;
         private String callType; // voice, video
+        // true when this is an invite into an existing GROUP/multi-party room
+        // (added to a call). The callee then joins via the SFU group path
+        // instead of the 1:1 mesh path. Defaults false for normal 1:1 calls.
+        // @JsonProperty pins the JSON key to "isGroup" — without it Jackson would
+        // strip the "is" prefix from Lombok's isGroup() getter and emit "group",
+        // which the frontend (reads n.isGroup) would never see.
+        @lombok.Builder.Default
+        @com.fasterxml.jackson.annotation.JsonProperty("isGroup")
+        private boolean isGroup = false;
     }
     
     // ============ Direct Call DTOs ============

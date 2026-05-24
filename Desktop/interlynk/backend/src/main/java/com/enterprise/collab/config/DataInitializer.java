@@ -39,6 +39,16 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${app.storage.base-path:/opt/company-platform}")
     private String storageBasePath;
 
+    // When false (the default), the throwaway demo/jay test accounts are NOT
+    // created. Set app.seed-demo-users=true (SEED_DEMO_USERS=true) only in dev.
+    @Value("${app.seed-demo-users:false}")
+    private boolean seedDemoUsers;
+
+    // Initial admin password. Sourced from env so production never ships a
+    // known credential. If left at the default, a prominent warning is logged.
+    @Value("${app.admin.initial-password:admin@123}")
+    private String adminInitialPassword;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -46,7 +56,9 @@ public class DataInitializer implements CommandLineRunner {
 
         initializeStorageDirectories();
         initializeRoles();
-        initializeDemoUser();
+        if (seedDemoUsers) {
+            initializeDemoUser();
+        }
         initializeAdminUser();
         // No default chats: never seed text channels and remove any
         // previously seeded "general"/"random"/"announcements".
@@ -128,8 +140,7 @@ public class DataInitializer implements CommandLineRunner {
                             .permissions("ALL")
                             .build()));
 
-            // Password: "admin@123"
-            String adminPasswordHash = passwordEncoder.encode("admin@123");
+            String adminPasswordHash = passwordEncoder.encode(adminInitialPassword);
             User adminUser = User.builder()
                     .username("admin")
                     .email("admin@interlynk.com")
@@ -145,11 +156,19 @@ public class DataInitializer implements CommandLineRunner {
             adminUser.setRoles(adminRoles);
             userRepository.save(adminUser);
 
-            log.info("Admin user created: username=admin@interlynk.com, password=admin@123");
+            if ("admin@123".equals(adminInitialPassword)) {
+                log.warn("============================================================");
+                log.warn("SECURITY: admin user created with the DEFAULT password.");
+                log.warn("Set app.admin.initial-password (env ADMIN_INITIAL_PASSWORD)");
+                log.warn("and change it on first login before exposing this server.");
+                log.warn("============================================================");
+            } else {
+                log.info("Admin user created (username=admin) with a configured password.");
+            }
         }
 
-        // Ensure Jay account exists for testing
-        if (!userRepository.findByUsername("jay").isPresent()) {
+        // The 'jay' account is a throwaway test login — only seed it in dev.
+        if (seedDemoUsers && !userRepository.findByUsername("jay").isPresent()) {
             log.info("Creating jay user for testing...");
             User jayUser = User.builder()
                     .username("jay")
